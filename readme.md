@@ -24,7 +24,7 @@ This is an [example link](http://example.com)
 
 
 
-``` **javascript**
+``` javascript
     <script>
        $(function(){
 
