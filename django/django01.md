@@ -1,14 +1,14 @@
 # Django Day01
 
 ## 优点
-1.重量级(功能齐全)
-2.安全性高(XSS攻击，Session劫持...)
-3.后台存储数据库，可以多元化的，MySQL,Oracle...,
-4.纯Python
-5.MVC方式编程.(Model, View, Controller)
-    Model --> Table
-    View --> Presentation
-    Controller --> Logical
++ 重量级(功能齐全)
++ 安全性高(XSS攻击，Session劫持...)
++ 后台存储数据库，可以多元化的，MySQL,Oracle...,
++ 纯Python
++ MVC方式编程.(Model, View, Controller)
+   + Model --> Table
+   + View --> Presentation
+   + Controller --> Logical
 
 # 安装, 1.8.19
 1.下载安装tar包
