@@ -48,8 +48,10 @@ for i in range(300):
 
 ## 时间之间的转换
 
-datetime ---- .strftime() ---> '2019-10-01'
-'2019-10-1' ---- .strptime() --->  datetime
-longint ---- .strftime()  ---> '2019-10-1'
-datetime --- time.mktime( .timetuple()) ---> timetuple    ----> longint
++ datetime ---- datetime.strftime() ---> '2019-10-01'
++ '2019-10-1' ---- datetime.strptime() --->  datetime
++ longint ---- time.strftime()  ---> '2019-10-1'
++ datetime --- time.mktime( .timetuple()) ---> timetuple  ----> longint
++ longint ---> datetime.fromttimestamp() --> datetime
 
+> time.mktime(datetime.timetuple(datetime.fromtimestamp( time.time())))
