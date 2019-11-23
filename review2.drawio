@@ -1,4 +1,4 @@
-<mxfile host="www.draw.io" modified="2019-11-23T02:11:45.633Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0" etag="1VAozvqHVYom4YZ6LgSb" version="12.2.9" type="github" pages="1">
+<mxfile host="www.draw.io" modified="2019-11-23T02:27:37.260Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:61.0) Gecko/20100101 Firefox/61.0" etag="pH3WOkohg6ZADhvuBzQS" version="12.2.9" type="github" pages="1">
   <diagram id="6a731a19-8d31-9384-78a2-239565b7b9f0" name="Page-1">
     <mxGraphModel dx="1182" dy="574" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="#ffffff" math="0" shadow="0">
       <root>
@@ -382,25 +382,25 @@
         <mxCell id="1438" value="本地容器仓库" style="rounded=1;fillColor=#64BBE2;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="2056" y="616.5" width="120" height="40" as="geometry"/>
         </mxCell>
-        <mxCell id="1439" value="Whale" style="rounded=1;fillColor=#64BBE2;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
-          <mxGeometry x="2101" y="706.5" width="120" height="40" as="geometry"/>
+        <mxCell id="1439" value="docker-compose多服务" style="rounded=1;fillColor=#64BBE2;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+          <mxGeometry x="2101" y="707" width="169" height="44" as="geometry"/>
         </mxCell>
-        <mxCell id="1440" value="Bass" style="rounded=1;fillColor=#64BBE2;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+        <mxCell id="1440" value="端口映射" style="rounded=1;fillColor=#64BBE2;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="2171" y="786.5" width="120" height="40" as="geometry"/>
         </mxCell>
         <mxCell id="1441" value="Eel" style="rounded=1;fillColor=#64BBE2;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="2121" y="966.5" width="120" height="40" as="geometry"/>
         </mxCell>
-        <mxCell id="1442" value="Oyster" style="rounded=1;fillColor=#64BBE2;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
-          <mxGeometry x="2181" y="871.5" width="120" height="40" as="geometry"/>
+        <mxCell id="1442" value="本地卷映射到MySQL容器中" style="rounded=1;fillColor=#64BBE2;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+          <mxGeometry x="2140" y="872" width="161" height="39" as="geometry"/>
         </mxCell>
         <mxCell id="1443" value="Ray" style="rounded=1;fillColor=#64BBE2;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="1981" y="1016.5" width="120" height="40" as="geometry"/>
         </mxCell>
-        <mxCell id="1444" value="Trout" style="rounded=1;fillColor=#64BBE2;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
-          <mxGeometry x="1856" y="956.5" width="120" height="40" as="geometry"/>
+        <mxCell id="1444" value="分析一个容器的堆叠层" style="rounded=1;fillColor=#64BBE2;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+          <mxGeometry x="1830" y="957" width="146" height="44" as="geometry"/>
         </mxCell>
-        <mxCell id="1445" value="Catfish" style="rounded=1;fillColor=#64BBE2;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+        <mxCell id="1445" value="Swarm集群环境实现" style="rounded=1;fillColor=#64BBE2;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="1756" y="891.5" width="120" height="40" as="geometry"/>
         </mxCell>
         <mxCell id="1446" value="" style="edgeStyle=none;endArrow=none;strokeWidth=3;strokeColor=#64BBE2;html=1;" parent="1" source="1353" target="1435" edge="1">
@@ -517,7 +517,7 @@
             <mxPoint x="351" y="-103.5" as="targetPoint"/>
           </mxGeometry>
         </mxCell>
-        <mxCell id="1468" value="Zygomycota" style="rounded=1;fillColor=#f5af58;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+        <mxCell id="1468" value="模板for循环渲染" style="rounded=1;fillColor=#f5af58;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="1358.5" y="1274" width="120" height="40" as="geometry"/>
         </mxCell>
         <mxCell id="1469" value="Script Writing" style="rounded=1;fillColor=#f5af58;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
@@ -526,13 +526,13 @@
         <mxCell id="1470" value="Ascomycota" style="rounded=1;fillColor=#f5af58;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="1348.5" y="1411.5" width="120" height="40" as="geometry"/>
         </mxCell>
-        <mxCell id="1471" value="Basidiomycota" style="rounded=1;fillColor=#f5af58;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+        <mxCell id="1471" value="按条件模糊查询" style="rounded=1;fillColor=#f5af58;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="1283.5" y="1471.5" width="120" height="40" as="geometry"/>
         </mxCell>
         <mxCell id="1472" value="Mushroom" style="rounded=1;fillColor=#f5af58;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="1183.5" y="1529" width="120" height="40" as="geometry"/>
         </mxCell>
-        <mxCell id="1473" value="Lichen" style="rounded=1;fillColor=#f5af58;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+        <mxCell id="1473" value="按ID查询" style="rounded=1;fillColor=#f5af58;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="1083.5" y="1471.5" width="120" height="40" as="geometry"/>
         </mxCell>
         <mxCell id="1474" value="JSON格式的回应" style="rounded=1;fillColor=#f5af58;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
@@ -547,7 +547,7 @@
         <mxCell id="1477" value="后台数据库配置" style="rounded=1;fillColor=#f5af58;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="1028.5" y="1209" width="120" height="40" as="geometry"/>
         </mxCell>
-        <mxCell id="1478" value="Chytrid" style="rounded=1;fillColor=#f5af58;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+        <mxCell id="1478" value="母板/模板的实现" style="rounded=1;fillColor=#f5af58;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="1298.5" y="1194" width="120" height="40" as="geometry"/>
         </mxCell>
         <mxCell id="1479" value="" style="edgeStyle=none;endArrow=none;strokeWidth=3;strokeColor=#F5AF58;html=1;" parent="1" source="1355" target="1478" edge="1">
@@ -620,7 +620,7 @@
           <mxGeometry x="623.5" y="1006.5" width="120" height="40" as="geometry"/>
         </mxCell>
         <mxCell id="1491" value="网络服务端/客户端编写" style="rounded=1;fillColor=#f08e81;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
-          <mxGeometry x="488.5" y="1011.5" width="120" height="40" as="geometry"/>
+          <mxGeometry x="470" y="1012" width="139" height="39" as="geometry"/>
         </mxCell>
         <mxCell id="1492" value="列表的追加" style="rounded=1;fillColor=#f08e81;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="423.5" y="1066.5" width="120" height="40" as="geometry"/>
@@ -631,13 +631,13 @@
         <mxCell id="1494" value="生成测试伪数据" style="rounded=1;fillColor=#f08e81;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="348.5" y="1181.5" width="120" height="40" as="geometry"/>
         </mxCell>
-        <mxCell id="1495" value="Lilac" style="rounded=1;fillColor=#f08e81;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+        <mxCell id="1495" value="挤牙膏式调用函数" style="rounded=1;fillColor=#f08e81;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="363.5" y="1246.5" width="120" height="40" as="geometry"/>
         </mxCell>
-        <mxCell id="1496" value="Dandelion" style="rounded=1;fillColor=#f08e81;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+        <mxCell id="1496" value="提供函数的帮助" style="rounded=1;fillColor=#f08e81;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="398.5" y="1309" width="120" height="40" as="geometry"/>
         </mxCell>
-        <mxCell id="1497" value="Poppy" style="rounded=1;fillColor=#f08e81;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+        <mxCell id="1497" value="打开文件追加新内容" style="rounded=1;fillColor=#f08e81;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="468.5" y="1359" width="120" height="40" as="geometry"/>
         </mxCell>
         <mxCell id="1498" value="Gerbera" style="rounded=1;fillColor=#f08e81;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
@@ -739,20 +739,20 @@
         <mxCell id="1518" value="编写playbook" style="rounded=1;fillColor=#a29dc5;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="309.5" y="561.5" width="120" height="40" as="geometry"/>
         </mxCell>
-        <mxCell id="1519" value="Birch" style="rounded=1;fillColor=#a29dc5;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
-          <mxGeometry x="449.5" y="571.5" width="120" height="40" as="geometry"/>
+        <mxCell id="1519" value="通过模块实现文件内容的修改" style="rounded=1;fillColor=#a29dc5;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+          <mxGeometry x="450" y="572" width="181" height="39" as="geometry"/>
         </mxCell>
-        <mxCell id="1520" value="Silverfern" style="rounded=1;fillColor=#a29dc5;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+        <mxCell id="1520" value="按角色执行" style="rounded=1;fillColor=#a29dc5;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="514.5" y="641.5" width="120" height="40" as="geometry"/>
         </mxCell>
-        <mxCell id="1521" value="Personal &#xa;Development" style="rounded=1;fillColor=#a29dc5;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
-          <mxGeometry x="539.5" y="721.5" width="120" height="40" as="geometry"/>
+        <mxCell id="1521" value="给不同系统安装apache" style="rounded=1;fillColor=#a29dc5;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+          <mxGeometry x="540" y="722" width="161" height="39" as="geometry"/>
         </mxCell>
         <mxCell id="1522" value="Pine" style="rounded=1;fillColor=#a29dc5;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="67" y="641.5" width="120" height="40" as="geometry"/>
         </mxCell>
-        <mxCell id="1523" value="Lime" style="rounded=1;fillColor=#a29dc5;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
-          <mxGeometry x="472" y="831.5" width="120" height="40" as="geometry"/>
+        <mxCell id="1523" value="设置数据库key_buffer_size为主机内存的一半" style="rounded=1;fillColor=#a29dc5;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
+          <mxGeometry x="472" y="832" width="248" height="39" as="geometry"/>
         </mxCell>
         <mxCell id="1524" value="Chestnut" style="rounded=1;fillColor=#a29dc5;strokeColor=none;strokeWidth=3;shadow=0;html=1;fontColor=#FFFFFF;" parent="1" vertex="1">
           <mxGeometry x="422" y="891.5" width="120" height="40" as="geometry"/>
