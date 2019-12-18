@@ -312,7 +312,7 @@ urlpatterns = [
     | --------- | --------- | ---- | ------- |
     | {prefix}/ | GET       |  list   |  {basename}-list       |
     | {prefix}/ | POST      | create  | {basename}-list |
-| {prefix}/{url_path} | GET 或者指定的 methods 的参数 | `@action(detail=False)` 装饰器方法 | {basename}-{url_name} |
+    | {prefix}/{url_path} | GET 或者指定的 methods 的参数 | `@action(detail=False)` 装饰器方法 | {basename}-{url_name} |
     | {prefix}/{lookup}/ | GET | retrieve | {basename}-detail |
     | {prefix}/{lookup}/ | PUT | update | {basename}-detail |
     | {prefix}/{lookup}/ | PATCH | partial_update | {basename}-detail |
