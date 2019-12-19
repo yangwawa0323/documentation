@@ -1,4 +1,4 @@
-<mxfile host="www.draw.io" modified="2019-12-19T08:53:58.083Z" agent="Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0" etag="Q8_fNCObTeYBDoVUSLD7" version="12.4.3" type="github" pages="2">
+<mxfile host="www.draw.io" modified="2019-12-19T08:55:36.935Z" agent="Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0" etag="7BBnjoJhOdjYQVSuzBm-" version="12.4.3" type="github" pages="2">
   <diagram id="FFnCSk3FtnhDgXw6J3LV" name="Page-1">
     <mxGraphModel dx="1814" dy="526" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
       <root>
@@ -87,9 +87,6 @@
         <mxCell id="Frtqr6aCwYd_uyu4mnSW-25" value="&lt;pre&gt;&lt;font color=&quot;#FFFFCC&quot;&gt;Serializer &lt;br&gt;relation&lt;br&gt;&lt;/font&gt;&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#99CCFF;strokeWidth=2;" vertex="1" parent="1">
           <mxGeometry x="340" y="1080" width="120" height="60" as="geometry"/>
         </mxCell>
-        <mxCell id="Frtqr6aCwYd_uyu4mnSW-26" value="Text" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];;autosize=1;" vertex="1" parent="1">
-          <mxGeometry x="688" y="1057" width="40" height="20" as="geometry"/>
-        </mxCell>
         <mxCell id="Frtqr6aCwYd_uyu4mnSW-27" value="&lt;pre&gt;&lt;font color=&quot;#FFFFFF&quot;&gt;Validators&lt;br&gt;&lt;/font&gt;&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#6666FF;strokeWidth=2;" vertex="1" parent="1">
           <mxGeometry x="340" y="1190" width="120" height="60" as="geometry"/>
         </mxCell>
@@ -140,9 +137,6 @@
         </mxCell>
         <mxCell id="Frtqr6aCwYd_uyu4mnSW-56" value="&lt;pre&gt;&lt;font color=&quot;#FFFFFF&quot;&gt;Format Suffixes&lt;br&gt;&lt;/font&gt;&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#66B2FF;strokeWidth=2;" vertex="1" parent="1">
           <mxGeometry x="180" y="1390" width="120" height="60" as="geometry"/>
-        </mxCell>
-        <mxCell id="Frtqr6aCwYd_uyu4mnSW-57" value="Text" style="text;html=1;align=center;verticalAlign=middle;resizable=0;points=[];;autosize=1;fontSize=12;fontFamily=Lucida Console;" vertex="1" parent="1">
-          <mxGeometry x="589" y="1224" width="40" height="20" as="geometry"/>
         </mxCell>
         <mxCell id="Frtqr6aCwYd_uyu4mnSW-58" value="&lt;pre&gt;&lt;font color=&quot;#FFFFFF&quot;&gt;Returning URLs&lt;br&gt;&lt;/font&gt;&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#66B2FF;strokeWidth=2;" vertex="1" parent="1">
           <mxGeometry x="180" y="1300" width="120" height="60" as="geometry"/>
