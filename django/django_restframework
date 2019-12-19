@@ -1,6 +1,6 @@
-<mxfile host="www.draw.io" modified="2019-12-19T08:49:51.263Z" agent="Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0" etag="3AVILiory2Kno7e-uW0B" version="12.4.3" type="github" pages="1">
+<mxfile host="www.draw.io" modified="2019-12-19T08:53:58.083Z" agent="Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:71.0) Gecko/20100101 Firefox/71.0" etag="Q8_fNCObTeYBDoVUSLD7" version="12.4.3" type="github" pages="2">
   <diagram id="FFnCSk3FtnhDgXw6J3LV" name="Page-1">
-    <mxGraphModel dx="645" dy="526" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
+    <mxGraphModel dx="1814" dy="526" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
       <root>
         <mxCell id="0"/>
         <mxCell id="1" parent="0"/>
@@ -147,6 +147,26 @@
         <mxCell id="Frtqr6aCwYd_uyu4mnSW-58" value="&lt;pre&gt;&lt;font color=&quot;#FFFFFF&quot;&gt;Returning URLs&lt;br&gt;&lt;/font&gt;&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#66B2FF;strokeWidth=2;" vertex="1" parent="1">
           <mxGeometry x="180" y="1300" width="120" height="60" as="geometry"/>
         </mxCell>
+        <mxCell id="Frtqr6aCwYd_uyu4mnSW-59" value="&lt;pre&gt;&lt;font color=&quot;#FFFFFF&quot;&gt;Exceptions&lt;br&gt;&lt;/font&gt;&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#66B2FF;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="180" y="1190" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="tFcc19Ro7FCZ5OcF946H-5" style="edgeStyle=orthogonalEdgeStyle;curved=1;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0;exitY=0.5;exitDx=0;exitDy=0;fontFamily=Lucida Console;fontSize=12;" edge="1" parent="1" source="Frtqr6aCwYd_uyu4mnSW-60" target="tFcc19Ro7FCZ5OcF946H-1">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="Frtqr6aCwYd_uyu4mnSW-60" value="&lt;pre&gt;&lt;font color=&quot;#FFFFFF&quot;&gt;Status Codes&lt;br&gt;&lt;/font&gt;&lt;/pre&gt;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#66B2FF;strokeWidth=2;" vertex="1" parent="1">
+          <mxGeometry x="180" y="1077" width="120" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="tFcc19Ro7FCZ5OcF946H-1" value="&lt;ul&gt;&lt;li&gt;1xx Information&lt;br&gt;&lt;/li&gt;&lt;li&gt;2xx Successful&lt;br&gt;&lt;/li&gt;&lt;li&gt;3xx Redirection&lt;/li&gt;&lt;li&gt;4xx Client Error&lt;/li&gt;&lt;li&gt;5xx Server Error&lt;br&gt;&lt;/li&gt;&lt;/ul&gt;" style="text;strokeColor=none;fillColor=none;html=1;whiteSpace=wrap;verticalAlign=middle;overflow=hidden;rounded=1;shadow=1;glass=0;dashed=1;comic=0;fontFamily=Lucida Console;fontSize=12;" vertex="1" parent="1">
+          <mxGeometry x="-60" y="960" width="200" height="90" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="1CNb8JVMfCiosq0ZGXw1" name="Page-2">
+    <mxGraphModel dx="645" dy="526" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1654" math="0" shadow="0">
+      <root>
+        <mxCell id="VIMsTSTVu7VQKcy3Go77-0"/>
+        <mxCell id="VIMsTSTVu7VQKcy3Go77-1" parent="VIMsTSTVu7VQKcy3Go77-0"/>
       </root>
     </mxGraphModel>
   </diagram>
