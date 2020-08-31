@@ -200,5 +200,258 @@ ORDER BY 1, 2;
 SQL> alter database drop logfile member '/u01/oraredo/O12C/redo04a.rdo';
 ```
 
-> 如果出现 `ORA-01623` 错误，处理方式[如上](#switch_logfile)
+> 如果出现 `ORA-01623` 错误，需要切换日志，处理方式[如上](#switch_logfile)
 
+* 移动日志文件或者改其名称
+
+```plsql
+SQL> shutdown immediate;
+
+$ mv /u02/oraredo/O12C/redo02b.rdo /u01/oraredo/O12C/redo02b.rdo
+
+SQL> startup mount;
+
+SQL> alter database rename file '/u02/oraredo/O12C/redo02b.rdo'
+to '/u01/oraredo/O12C/redo02b.rdo';
+
+SQL> alter database open;
+```
+
+
+
+## 归档日志文件
+
+* 设置归档日志位置
+
+```plsql
+SQL> alter system set log_archive_dest_1='location=/u01/oraarch/O12C' scope=both;
+SQL> alter system set log_archive_format='O12C_%t_%s_%r.arc' scope=spfile;
+```
+
+> 在Linux下可以使用下面的命令检查
+>
+> ```shell
+> $ cd $ORACLE_HOME/dbs
+> $ strings spfile$ORACLE_SID.ora
+> ```
+
+>你可以通过 LOG_ARCHIVE_DESC_*N* 参数设置 
+>
+>```plsql
+>SQL> show parameter log_archive_dest
+>
+>NAME TYPE VALUE
+>---------------------- ----------- --------------------------
+>log_archive_dest string
+>log_archive_dest_1 string location=/u01/oraarch/O12C
+>log_archive_dest_10 string
+>```
+
+* 查看详细的归档日志信息
+
+```plsql
+SQL> select dest_name, destination, status, binding from v$archive_dest;
+
+DEST_NAME DESTINATION STATUS BINDING
+-------------------- -------------------- --------- ---------
+LOG_ARCHIVE_DEST_1 /u01/archive/O12C VALID OPTIONAL
+LOG_ARCHIVE_DEST_2 INACTIVE OPTIONAL
+...
+```
+
+## 日志文件 FRA 区域
+
+开启FRA，设置以下两个参数
+
+ ```plsql
+SQL> alter system set db_recovery_file_dest_size=200g scope=both;
+
+SQL> alter system set db_recovery_file_dest='/u01/fra' scope=both;
+
+SQL> archive log list;
+
+Database log mode Archive Mode
+Automatic archival Enabled
+Archive destination USE_DB_RECOVERY_FILE_DEST
+
+SQL> show parameter db_recovery_file_dest
+
+ ```
+
+> 如果想同时设置FRA和非FRA位置
+>
+> ```plsql
+> SQL> alter system set log_archive_dest_1='location=/u01/oraarch/O12C';
+> SQL> alter system set log_archive_dest_2='location=USE_DB_RECOVERY_FILE_DEST';
+> ```
+>
+> 关闭FRA
+>
+> ```plsql
+> SQL> alter system set db_recovery_file_dest='';
+> ```
+
+
+
+## 归档日志
+
+* 开启归档日志并检查
+
+```plsql
+SQL> shutdown immediate;
+SQL> startup mount;
+SQL> alter database archivelog;
+SQL> alter database open;
+
+SQL> archive log list;
+
+SQL> select log_mode from v$database;
+LOG_MODE
+------------
+ARCHIVELOG
+```
+
+* 关闭归档日志
+
+```plsql
+SQL> shutdown immediate;
+SQL> startup mount;
+SQL> alter database noarchivelog;
+SQL> alter database open;
+```
+
+## 表空间和数据文件
+
+![image-20200831151432277](E:\Documents\Oracle11g常用管理查询.assets\image-20200831151432277.png)
+
+* 创建表空间
+
+```plsql
+create tablespace tools datafile '/u01/dbfile/O12C/tools01.dbf'
+size 100m
+segment space management auto;
+--- OR
+create tablespace tools datafile '/u01/dbfile/O12C/tools01.dbf'
+size 100m
+autoextend on maxsize 1000m
+segment space management auto;
+```
+
+也可以使用变量的形式创建表空间
+
+```plsql
+define tbsp_large=5G
+define tbsp_med=500M
+--
+create tablespace reg_data datafile '/u01/dbfile/O12C/reg_data01.dbf'
+size &&tbsp_large segment space management auto;
+--
+create tablespace reg_index datafile '/u01/dbfile/O12C/reg_index01.dbf'
+size &&tbsp_med segment space management auto;
+```
+
+> 上面的定义的变量在调用时使用 `&&` 
+
+也可以写入到SQL脚本中
+
+```plsql
+define tbsp_large=&1
+define tbsp_med=&2
+--
+create tablespace reg_data datafile '/u01/dbfile/O12C/reg_data01.dbf'
+size &&tbsp_large segment space management auto;
+--
+create tablespace reg_index datafile '/u01/dbfile/O12C/reg_index01.dbf'
+size &&tbsp_med segment space management auto;
+
+SQL> @cretbsp 5G 500M
+```
+
+> 上面的 `&1` , `&2` 将作为位置参数
+>
+> 如果 `&varname` 将会提示你输入varname变量
+
+* 查看已有的表空间是如何创建的
+
+  使用 **DBMS_METADATA** 包中的函数
+
+```plsql
+SQL> set long 1000000
+
+SQL> select dbms_metadata.get_ddl('TABLESPACE',tablespace_name) from dba_tablespaces;
+```
+
+* 修改表空间
+
+```plsql
+SQL> alter tablespace tools rename to tools_dev;
+```
+
+* 控制 redo 日志的生成
+
+```plsql
+create tablespace inv_mgmt_data
+datafile '/u01/dbfile/O12C/inv_mgmt_data01.dbf' size 100m
+segment space management auto
+nologging;
+
+SQL> select tablespace_name, logging from dba_tablespaces;
+```
+
+> 如果已有的表空间
+>
+> ```plsql
+> SQL> alter tablespace inv_mgmt_data nologging;
+> ```
+
+* 改变表空间/表的读写模式
+
+```plsql
+SQL> alter tablespace inv_mgmt_rep read only;
+
+SQL> alter tablespace inv_mgmt_rep read write;
+
+SQL> alter table my_tab read only;
+
+SQL> alter table my_tab read write;
+```
+
+* 删除表空间
+  1. 先将表空间离线
+
+```plsql
+SQL> alter tablespace inv_data offline;
+```
+
+		2.  删除表空间包括内容和表空间中的数据文件
+
+```plsql
+SQL> drop tablespace inv_data including contents and datafiles;
+```
+
+> 如果遇到 ORA-02449: unique/primary keys in table referenced by foreign keys  错误
+>
+> ```plsql
+> select p.owner,
+> p.table_name,
+> p.constraint_name,
+> f.table_name referencing_table,
+> f.constraint_name foreign_key_name,
+> f.status fk_status
+> from dba_constraints p,
+> dba_constraints f,
+> dba_tables t
+> where p.constraint_name = f.r_constraint_name
+> and f.constraint_type = 'R'
+> and p.table_name = t.table_name
+> and t.tablespace_name = UPPER('&tablespace_name')
+> order by 1,2,3,4,5;
+> ```
+>
+> 可以先行查询下 *inv_data* 表空间下存放表是否有外键参考的数据，查看表空间下表的约束
+>
+> 确定数据无关重要性后，可以使用 `CASCADE` 递归式删除
+>
+> ```plsql
+> SQL> drop tablespace inv_data including contents and data files cascade constraints;
+> ```
