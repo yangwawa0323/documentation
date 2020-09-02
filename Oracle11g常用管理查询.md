@@ -1,3 +1,5 @@
+
+
 # Oracle 11g 常用管理查询语句
 
 
@@ -11,11 +13,218 @@ $ export LD_LIBRARY_PATH=/usr/lib:$ORACLE_HOME/lib
 $ export PATH=$ORACLE_HOME/bin:$PATH  
 ```
 
-![image-20200831094804509](E:\Documents\Oracle11g常用管理查询.assets\image-20200831094804509.png)
+默认Oracle数据搜索查询中区分字符的大小写，可以建立会话后设定两个变量
+
+```plsql
+---
+ALTER SESSION SET NLS_COMP=LINGUISTIC;
+ALTER SESSION SET NLS_SORT = BINARY_CI;
+```
+
+
+
+## 侦听实例状态
+
+可以使用 `lsnrctl status` 查看实例启动状态
+
+```shell
+C:\Users\yangwawa>lsnrctl status
+
+LSNRCTL for 64-bit Windows: Version 11.2.0.1.0 - Production on 02-SEP-2020 19:10:25
+
+Copyright (c) 1991, 2010, Oracle.  All rights reserved.
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=IPC)(KEY=EXTPROC1521)))
+STATUS of the LISTENER
+------------------------
+Alias                     LISTENER
+Version                   TNSLSNR for 64-bit Windows: Version 11.2.0.1.0 - Production
+Start Date                29-AUG-2020 23:23:57
+Uptime                    3 days 19 hr. 46 min. 27 sec
+Trace Level               off
+Security                  ON: Local OS Authentication
+SNMP                      OFF
+Listener Parameter File   E:\app\yangwawa\product\11.2.0\dbhome_1\network\admin\listener.ora
+Listener Log File         e:\app\yangwawa\diag\tnslsnr\DESKTOP-08E761I\listener\alert\log.xml
+Listening Endpoints Summary...
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(PIPENAME=\\.\pipe\EXTPROC1521ipc)))
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=127.0.0.1)(PORT=1521)))
+Services Summary...
+Service "orcl" has 1 instance(s).
+  Instance "orcl", status READY, has 1 handler(s) for this service...
+Service "orclXDB" has 1 instance(s).
+  Instance "orcl", status READY, has 1 handler(s) for this service...
+Service "rcat" has 1 instance(s).
+  Instance "rcat", status READY, has 1 handler(s) for this service...
+Service "rcatXDB" has 1 instance(s).
+  Instance "rcat", status READY, has 1 handler(s) for this service...
+The command completed successfully
+```
+
+* 也可以交互式查询
+
+```shell
+C:\Users\yangwawa>lsnrctl
+
+LSNRCTL for 64-bit Windows: Version 11.2.0.1.0 - Production on 02-SEP-2020 19:11:35
+
+Copyright (c) 1991, 2010, Oracle.  All rights reserved.
+
+Welcome to LSNRCTL, type "help" for information.
+
+LSNRCTL> services listener
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=IPC)(KEY=EXTPROC1521)))
+Services Summary...
+Service "orcl" has 1 instance(s).
+  Instance "orcl", status READY, has 1 handler(s) for this service...
+    Handler(s):
+      "DEDICATED" established:3344 refused:0 state:ready
+         LOCAL SERVER
+Service "orclXDB" has 1 instance(s).
+  Instance "orcl", status READY, has 1 handler(s) for this service...
+    Handler(s):
+      "D000" established:0 refused:0 current:0 max:1022 state:ready
+         DISPATCHER <machine: DESKTOP-08E761I, pid: 7112>
+         (ADDRESS=(PROTOCOL=tcp)(HOST=DESKTOP-08E761I)(PORT=50731))
+Service "rcat" has 1 instance(s).
+  Instance "rcat", status READY, has 1 handler(s) for this service...
+    Handler(s):
+      "DEDICATED" established:0 refused:0 state:ready
+         LOCAL SERVER
+Service "rcatXDB" has 1 instance(s).
+  Instance "rcat", status READY, has 1 handler(s) for this service...
+    Handler(s):
+      "D000" established:0 refused:0 current:0 max:1022 state:ready
+         DISPATCHER <machine: DESKTOP-08E761I, pid: 10752>
+         (ADDRESS=(PROTOCOL=tcp)(HOST=DESKTOP-08E761I)(PORT=56243))
+The command completed successfully
+```
+
+* 使用自带工具管理 **Oracle Net Manager** 
+
+![image-20200902191509711](E:\Documents\Oracle11g常用管理查询.assets\image-20200902191509711.png)
+
+
+
+* 建立数据库链接
+
+  如果需要在不同的数据库之间查询数据，可以在当前实例中建立其他实例的数据库链接
+
+  
+
+![Description of create_database_link.gif follows](https://docs.oracle.com/cd/E11882_01/server.112/e41084/img/create_database_link.gif)
+
+
+
+```plsql
+ SQL>　CREATE DATABASE LINK orclInst
+ 2  　　CONNECT TO hr IDENTIFIED BY redhat USING 'orcl';
+ SQL> DESC user_tables@orclInst;
+```
+
+> 建立链接之后在查询表后添加 `@linkname`  , 设置可以通过其他数据库的结构建表以及插入数据
+>
+> ```plsql
+> CREATE TABLE orcl_user_tables AS SELECT * FROM user_tables@orclInst;
+> INSERT INTO orcl_user_tables AS SELECT * FROM user_tables@orclInst;
+> ```
+
+
+
+## 逻辑结构和物理结构
+
+![image-20200902203739335](E:\Documents\Oracle11g常用管理查询.assets\image-20200902203739335.png)
+
+* 操作系统块: Windows/Linux 缺省为 4096, 4K
+* Oracle 数据块： 2-32K ， 默认为8K，Windows/Linux 仅仅支持 2-16K， 参数 DB_BLOCK_SIZE
+* 扩展段: 一系列Oracle数据块组成，在数据文件中一定是**连续**的
+* 分段: 由一个或多个扩展段组成，也是连续的数字化
+
+###　查看每个在数据库中的分段信息
+
+```plsql
+SQL>  select segment_type,count(1) from dba_segments group by segment_type
+  2  order by segment_type;
+
+SEGMENT_TYPE         COUNT(1)
+------------------ ----------
+CLUSTER                    10
+INDEX                    3449
+INDEX PARTITION           104
+LOB PARTITION               1
+LOBINDEX                  771
+LOBSEGMENT                771
+NESTED TABLE               26
+ROLLBACK                    1
+TABLE                    2210
+TABLE PARTITION            88
+TYPE2 UNDO                 10
+
+11 rows selected.
+```
+
+![image-20200902210954533](E:\Documents\Oracle11g常用管理查询.assets\image-20200902210954533.png)
+
+
+
+![image-20200902211630046](E:\Documents\Oracle11g常用管理查询.assets\image-20200902211630046.png)
+
+
+
+```plsql
+define tb=&tablespace;
+
+select t.tablespace_name name, d.allocated, u.used, f.free,
+t.status, d.cnt, contents, t.extent_management extman,
+t.segment_space_management segman
+from dba_tablespaces t,
+(select sum(bytes) allocated, count(file_id) cnt from dba_data_files
+where tablespace_name='&&tb') d,
+(select sum(bytes) free from dba_free_space
+where tablespace_name='&&tb') f,
+(select sum(bytes) used from dba_segments
+where tablespace_name='&&tb') u
+where t.tablespace_name='&&tb';
+```
+
+
+
+![image-20200902213301719](E:\Documents\Oracle11g常用管理查询.assets\image-20200902213301719.png)
+
+
+
+![image-20200902213314213](E:\Documents\Oracle11g常用管理查询.assets\image-20200902213314213.png)
+
+![image-20200902213502168](E:\Documents\Oracle11g常用管理查询.assets\image-20200902213502168.png)
+
+
+
+```plsql
+CREATE SMALLFILE TABLESPACE "NEWTS"
+DATAFILE 'D:\APP\ORACLE\ORADATA\ORCL11G\newts01.dbf'
+SIZE 100M AUTOEXTEND ON NEXT 10M MAXSIZE 200M
+LOGGING
+EXTENT MANAGEMENT LOCAL
+SEGMENT SPACE MANAGEMENT AUTO
+DEFAULT NOCOMPRESS;
+```
+
+
+
+```plsql
+SELECT t.name tablespace_name,
+       d.name filename,
+       d.bytes / 1024 / 1024 size_MB,
+       d.create_bytes / 1024 / 1024 create_size_MB
+FROM v$tablespace t JOIN v$tempfile d USING ( ts# )
+WHERE t.name = 'TEMP';
+```
 
 
 
 # 管理控制文件
+
+![image-20200831094804509](E:\Documents\Oracle11g常用管理查询.assets\image-20200831094804509.png)
 
 * 显示控制文件存储信息
 
@@ -455,3 +664,74 @@ SQL> drop tablespace inv_data including contents and datafiles;
 > ```plsql
 > SQL> drop tablespace inv_data including contents and data files cascade constraints;
 > ```
+
+
+
+## RMAN 备份
+
+* 查看备份集信息
+
+```plsql
+SET LINES 132 PAGESIZE 100
+BREAK ON REPORT ON bs_key ON completion_time ON bp_name ON file_name
+COL bs_key FORM 99999 HEAD "BS Key"
+COL bp_name FORM a40 HEAD "BP Name"
+COL file_name FORM a40 HEAD "Datafile"
+--
+SELECT
+s.recid bs_key
+,TRUNC(s.completion_time) completion_time
+,p.handle bp_name
+,f.name file_name
+FROM v$backup_set s
+,v$backup_piece p
+,v$backup_datafile d
+,v$datafile f
+WHERE p.set_stamp = s.set_stamp
+AND p.set_count = s.set_count
+AND d.set_stamp = s.set_stamp
+AND d.set_count = s.set_count
+AND d.file# = f.file#
+ORDER BY
+s.recid
+,p.handle
+,f.name;
+```
+
+### 数据恢复
+
+* 查看 **checkpoint**, 决定哪些数据需要恢复
+
+```plsql
+SET LINES 132
+COL name FORM a40
+COL status FORM A8
+COL file# FORM 9999
+COL control_file_SCN FORM 999999999999999
+COL datafile_SCN FORM 999999999999999
+--
+SELECT
+a.name
+,a.status
+,a.file#
+,a.checkpoint_change# control_file_SCN
+,b.checkpoint_change# datafile_SCN
+,CASE
+WHEN ((a.checkpoint_change# - b.checkpoint_change#) = 0) THEN 'Startup Normal'
+WHEN ((b.checkpoint_change#) = 0) THEN 'File Missing?'
+WHEN ((a.checkpoint_change# - b.checkpoint_change#) > 0) THEN 'Media Rec. Req.'
+WHEN ((a.checkpoint_change# - b.checkpoint_change#) < 0) THEN 'Old Control File'
+ELSE 'what the ?'
+END datafile_status
+FROM v$datafile a -- control file SCN for datafile
+,v$datafile_header b -- datafile header SCN
+WHERE a.file# = b.file#
+ORDER BY a.file#;
+```
+
+* 查看数据文件头信息
+
+```plsql
+SQL> select file#, status, error, recover from v$datafile_header;
+```
+
