@@ -16,9 +16,11 @@ $ export PATH=$ORACLE_HOME/bin:$PATH
 默认Oracle数据搜索查询中区分字符的大小写，可以建立会话后设定两个变量
 
 ```plsql
----
-ALTER SESSION SET NLS_COMP=LINGUISTIC;
-ALTER SESSION SET NLS_SORT = BINARY_CI;
+SQL> ALTER SESSION SET NLS_COMP=LINGUISTIC;
+SQL> ALTER SESSION SET NLS_SORT = BINARY_CI;
+
+SQL> set sqlprompt "_user'@'_connect_identifier>"
+SYSTEM@orcl11g>
 ```
 
 
@@ -218,6 +220,44 @@ SELECT t.name tablespace_name,
        d.create_bytes / 1024 / 1024 create_size_MB
 FROM v$tablespace t JOIN v$tempfile d USING ( ts# )
 WHERE t.name = 'TEMP';
+```
+
+
+
+* 查看segments 如何管理 bitmaps
+
+```plsql
+select tablespace_name,segment_space_management from dba_tablespaces;
+```
+
+
+
+* 将手工分段管理的模式的表修改为自动管理的步骤示例
+
+```plsql
+create tablespace manualsegs segment space management manual;
+
+select segment_space_management from dba_tablespaces
+where tablespace_name='MANUALSEGS';
+
+create table mantab (c1 number) tablespace manualsegs;
+create index mantabi on mantab(c1) tablespace manualsegs;
+
+create tablespace autosegs;
+
+alter table mantab move tablespace autosegs;
+alter index mantabi rebuild online tablespace autosegs;
+
+select tablespace_name from dba_segments
+where segment_name like 'MANTAB%';
+
+drop tablespace manualsegs including contents and datafiles;
+
+alter tablespace autosegs rename to manualsegs;
+
+drop tablespace manualsegs;
+
+drop tablespace manualsegs including contents and datafiles;
 ```
 
 
@@ -667,6 +707,181 @@ SQL> drop tablespace inv_data including contents and datafiles;
 
 
 
+## 账户管理
+
+用户管理的属性
+
+* 用户名
+* 验证方法
+* 默认表空间
+
+```plsql
+ALTER DATABASE DEFAULT TABLESPACE tablespace_name ;
+```
+
+* 表空间配额
+
+```plsql
+SELECT tablespace_name, bytes, max_bytes FROM dba_ts_quotas
+WHERE username='john';
+```
+
+![image-20200903013958386](E:\Documents\Oracle11g常用管理查询.assets\image-20200903013958386.png)s
+
+* 临时表空间
+
+```plsql
+ALTER USER username TEMPORARY TABLESPACE tablespace_name;
+```
+
+> 无需对用户的临时表空间配额
+
+* 用户配置模版
+
+  ​	![Description of create_profile.gif follows](https://docs.oracle.com/cd/E11882_01/server.112/e41084/img/create_profile.gif)
+
+  [详细请参考](https://docs.oracle.com/cd/E11882_01/server.112/e41084/statements_6010.htm#SQLRF01310)
+
+  以下是两个Profile范例
+
+  ```plsql
+  CREATE PROFILE app_user LIMIT 
+     SESSIONS_PER_USER          UNLIMITED 
+     CPU_PER_SESSION            UNLIMITED 
+     CPU_PER_CALL               3000 
+     CONNECT_TIME               45 
+     LOGICAL_READS_PER_SESSION  DEFAULT 
+     LOGICAL_READS_PER_CALL     1000 
+     PRIVATE_SGA                15K
+     COMPOSITE_LIMIT            5000000; 
+     
+  CREATE PROFILE app_user2 LIMIT
+     FAILED_LOGIN_ATTEMPTS 5
+     PASSWORD_LIFE_TIME 60
+     PASSWORD_REUSE_TIME 60
+     PASSWORD_REUSE_MAX 5
+     PASSWORD_VERIFY_FUNCTION verify_function
+     PASSWORD_LOCK_TIME 1/24
+     PASSWORD_GRACE_TIME 10;        
+  ```
+
+  
+
+  
+
+* 账户状态
+
+  ![Description of create_user.gif follows](https://docs.oracle.com/cd/E11882_01/server.112/e41084/img/create_user.gif)
+
+  
+
+![image-20200903014018395](E:\Documents\Oracle11g常用管理查询.assets\image-20200903014018395.png)
+
+
+
+* 账户状态
+
+  * OPEN
+
+  * LOCKED
+
+  * EXPIRED
+
+  * EXPIRED & LOCKED
+
+  * EXPIRED(GRACE)
+
+  * LOCKED(TIMED)
+
+  * EXPIRED & LOCKED(TIMED)
+
+  * EXPIRED(GRACE) & LOCKED
+
+  * EXPIRED(GRACE) & LOCKED(TIMED)
+
+    + 修改用户锁定状态
+
+    ```plsql
+    ALTER USER username ACCOUNT LOCK ;
+    ALTER USER username ACCOUNT UNLOCK ;
+    ```
+
+    * 修改用户密码状态
+
+    ```plsql
+    ALTER USER username PASSWORD EXPIRE;
+    ```
+
+    > 这里没有`unexpire`的设置，只有通过重置密码的唯一方法
+
+* 创建账户并分配其使用的表空间示例
+
+```plsql
+create user scott identified by tiger
+default tablespace users temporary tablespace temp
+quota 100m on users, quota unlimited on example
+profile developer_profile
+password expire
+account unlock;
+```
+
+* 启用操作系统用户和密码验证时角色的二选一
+
+```plsql
+GRANT [sysdba | sysoper ] TO username ;
+
+CONNECT username / password [@db_alias] AS [ SYSOPER | SYSDBA ] ;
+
+CONNECT / AS [ SYSOPER | SYSDBA ] ;
+```
+
+* 修改账户示例
+
+  * 修改密码
+
+    ```plsql
+    alter user scott identified by lion;
+    ```
+
+  * 修改默认表空间和临时表空间:
+
+    ```plsql
+    alter user scott default tablespace store_data temporary tablespace temp;
+    ```
+
+  * 修改配额:
+
+    ```plsql
+    alter user scott quota unlimited on store_data, quota 0 on users;
+    ```
+
+  * 修改配置模版:
+
+    ```plsql
+    alter user scott profile prod_profile;
+    ```
+
+  * 强制用户修改密码:
+
+    ```plsql
+    alter user scott password expire;
+    ```
+
+  * 锁定账户
+
+    ```plsql
+    alter user scott account lock;
+    ```
+
+  * 删除账户
+
+    ```plsql
+    drop user scott;
+    drop user scott cascade;
+    ```
+
+    
+
 ## RMAN 备份
 
 * 查看备份集信息
@@ -733,5 +948,171 @@ ORDER BY a.file#;
 
 ```plsql
 SQL> select file#, status, error, recover from v$datafile_header;
+```
+
+
+
+## Flash Back
+
+```plsql
+SQL> select log_mode from v$database;
+
+SQL> alter system set db_recovery_file_dest='/flash_recovery_area';
+SQL> alter system set db_recovery_file_dest_size=8G;
+
+SQL> alter system set db_flashback_retention_target=240;
+
+SQL> shutdown immediate;
+SQL> startup mount;
+
+SQL> alter database flashback on;
+
+SQL> alter database open;
+```
+
+```plsql
+SQL> select flashback_on from v$database;
+```
+
+![image-20200903120046495](E:\Documents\Oracle11g常用管理查询.assets\image-20200903120046495.png)
+
+```plsql
+SQL> select * from v$sgastat where name = 'flashback generation buff';
+POOL NAME BYTES
+------------ -------------------------- ----------
+shared pool flashback generation buff 3981204
+```
+
+### 使用PL/SQL FlashBack  Database
+
+```plsql
+SQL> shutdown abort;
+
+SQL> startup mount;
+SQL> flashback database to timestamp
+to_timestamp('20-12-08 10:00:00','dd-mm-yy hh24:mi:ss');
+SQL> alter database open read only;
+
+SQL> shutdown abort;
+SQL> startup mount;
+SQL> recover database until time '2008-12-20:10:02:00';
+SQL> alter database open read only
+
+SQL> shutdown abort;
+SQL> startup mount;
+SQL> alter database open resetlogs;
+```
+
+### 使用 RMAN FlashBack Database
+
+```plsql
+RMAN> flashback database to time =
+to_date('20-12-08 10:00:00','yy-mm-dd hh24:mi:ss');
+RMAN> flashback database to scn=2728665;
+RMAN> flashback database to sequence=2123 thread=1;
+```
+
+### 使用 Database Control FlashBack Database
+
+```plsql
+SQL> create table test as select * from all_users;
+SQL> select count(*) from test;
+
+```
+
+![image-20200903124629097](E:\Documents\Oracle11g常用管理查询.assets\image-20200903124629097.png)
+
+![image-20200903124709049](E:\Documents\Oracle11g常用管理查询.assets\image-20200903124709049.png)
+
+![image-20200903124723234](E:\Documents\Oracle11g常用管理查询.assets\image-20200903124723234.png)
+
+### Flaskback DROP
+
+![image-20200903125713679](E:\Documents\Oracle11g常用管理查询.assets\image-20200903125713679.png)
+
+
+
+#### Flashback DROP 示例
+
+1. 使用 SYSTEM 账户连接到数据库
+
+2. 建立一个测试账户
+
+   ```plsql
+   SQL> create user dropper identified by dropper;
+   SQL> grant create session, resource to dropper;
+   SQL> commit;
+   SQL> connect dropper/dropper;
+   ```
+
+3. 建表，建索引，插入数据
+
+   ```plsql
+   SQL> create table names (name varchar2(10));
+   SQL> create index name_idx on names(name);
+   SQL> alter table names add (constraint name_u unique(name));
+   SQL> insert into names values ('John');
+   SQL> commit;
+   ```
+
+4. 查看下你创建的对象
+
+   ```plsql
+   SQL> select object_name,object_type from user_objects;
+   SQL> select constraint_name,constraint_type,table_name from
+   user_constraints;
+   ```
+
+5. 模拟删除表
+
+   ```plsql
+   SQL> drop table names;
+   ```
+
+6. 再重新查询下，执行第4步，此时对象已经从 user_objects中移除
+
+7. 查询 user_recyclebin 表，查找对应的名字
+
+   ```plsql
+   SQL> select object_name,original_name,type from user_recyclebin;
+   ```
+
+8. 下图显示
+
+   ![image-20200903125947268](E:\Documents\Oracle11g常用管理查询.assets\image-20200903125947268.png)
+
+   > 注意名字需要使用 `""` 双引号扩起来
+
+9. 恢复表
+
+   ```plsql
+   SQL> flashback table names to before drop;
+   ```
+
+   > 表已恢复，但索引和约束没有
+
+10. 重新运行第4步和第7步，注意表的名称和索引在回收站的名称
+
+11. 重命名索引和约束名称
+
+    ```plsql
+    SQL> alter index "BIN$YXigM3puQNTgQAB/AQBmSQ==$0" rename to name_idx;
+    SQL> alter table names rename constraint
+    "BIN$YXigM3ptQNTgQAB/AQBmSQ==$0" to name_u;
+    ```
+
+12. 重新执行第10步骤，再次查看
+
+13. 再次使用 SYSTEM 连接，并且删除用户
+
+    ```plsql
+    SQL> connect system/oracle;
+    SQL> drop user dropper cascade;
+    ```
+
+14. 这次所有属于测试账户的对象全部消失
+
+```plsql
+SQL> select count(*) from dba_recyclebin where owner='DROPPER';
 ```
 
