@@ -2,15 +2,29 @@
 
 ## 安装
 
-安装虚拟环境
+安装虚拟环境,这样所安装的Python三方库就不会因为版本冲突，也不会乱七八糟的不容易管理，**建议每个项目都创建自己的虚拟环境**
 
 ```shell
 shell$　python -m venv venv
 ```
 
+激活虚拟环境
+
+```shell
+venv\Scripts\activate.bat
+```
+
+然后使用虚拟环境下的`pip`安装Flask
+
+```shell
+pip install flask
+```
+
 
 
 ## 路由
+
+Flask 是基于最为短小精干的 Werkzeug 的web框架，个人认为最主要的三个核心部分为路由，模版，和数据库交互。其中路由选择可以快速的映射成对用户请求的响应函数。
 
 ```python
 print(app.url_map)
@@ -18,7 +32,7 @@ print(app.url_map)
 
 
 
-![image-20200904112932321](E:\Documents\Flask 入门.assets\image-20200904112932321.png)
+![标准程序编写调用流程](E:\Documents\Flask 入门.assets\image-20200904112932321.png)
 
 
 
@@ -359,6 +373,8 @@ class NameForm(Form):
 
 ### 视图中处理 Form
 
+验证表单数据可以通过 `validate_on_submit`函数来检测
+
 ```python
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -372,7 +388,161 @@ def index():
 
 
 
-## 重定向和报错
+### CSRF 请求的保护
+
+为防止跨域或者编写程序通过保存网页提交数据攻击行为的保护，`Cross site request forgery`, 我们需要启动CSRF检测，也就是在服务器上针对用户的每个请求根据自己的私钥生成表单的隐藏字段，用户提交数据时对Token验证，这样其他服务器伪装提交过来的数据就无法通过验证，这种方式对数据的真实性做保证。
+
+首先，启用 `flask_wtf.csrf.CSRFProtect`
+
+```python
+from flask_wtf.csrf import CSRFProtect
+
+csrf = CSRFProtect(app)
+```
+
+> 缺省情况它使用 Flask 配置中的 **SECRET_KEY**, 也可以配置一个**WTF_CSRF_SECRET_KEY** 让其使用额外的密钥生成 `Token`
+
+接着，再在模板中表单中使用
+
+```html
+<form method="post">
+    {{ form.csrf_token }}
+</form>
+
+```
+
+如果没有使用`FlaskForm`类生成表单，则可以通过 `csrf_token()` 函数手工实现
+
+```html
+<form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+</form>
+```
+
+如果前后端分离模式编程，可以在Javascript脚本中调用 `csrf_token()` 函数，下面给一个Jquery的范例
+
+```javascript
+<script type="text/javascript">
+    var csrf_token = "{{ csrf_token() }}";
+
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                xhr.setRequestHeader("X-CSRFToken", csrf_token);
+            }
+        }
+    });
+</script>
+```
+
+如果要在视图函数中生成 `token`,则可以通过`flask_wrf.csf.generate_csrf`函数，它**只能放在视图函数中**调用
+
+```python
+from flask_wtf.csrf import CSRFProtect, generate_csrf
+#...
+
+@app.route('/testform', methods=['GET', 'POST'])
+def testForm():
+    form = EntryForm()
+    token = generate_csrf()
+    resp = make_response(render_template('testform.html', form=form))
+    resp.headers['X-TOKEN'] = token
+    return resp
+```
+
+一旦启用 CSRF 保护，所有FlaskForm函数在渲染的时候都会添加 `token`,如果想将某些视图排除在外，可以通过装饰函数 `@csrf.exempt`
+
+```python
+@app.route('/foo', methods=('GET', 'POST'))
+@csrf.exempt
+def my_handler():
+    # ...
+    return 'ok'
+```
+
+甚至可以排除整个`蓝图`下的视图, 请参考下方[蓝图知识点](#blueprint)
+
+```python
+csrf.exempt(account_blueprint)
+```
+
+
+
+更多详情请参考[官方文档](https://flask-wtf.readthedocs.io/en/stable/csrf.html?highlight=csrf#module-flask_wtf.csrf)
+
+
+
+## 访问请求的数据
+
+### Request 对象
+
+Request 对象为全局对象，直接从模块中引用即可
+
+```python
+from flask import request
+```
+
+* 用户的请求，通过 **request.method** 属性获得，其为一个`字符串`
+
+* 用户提交的表单数据，通过 **request.form** 属性获得，其为一个`OrderDict`, 获取不到指定的Key，会出现 `keyError`异常,如果你不认为处理异常，将会出现 `HTTP 400 Bad Request`作为服务器给客户端浏览器的响应 
+
+  ```python
+  @app.route('/login', methods=['POST', 'GET'])
+  def login():
+      error = None
+      if request.method == 'POST':
+          if valid_login(request.form['username'],
+                         request.form['password']):
+              return log_the_user_in(request.form['username'])
+          else:
+              error = 'Invalid username/password'
+      # the code below is executed if the request method
+      # was GET or the credentials were invalid
+      return render_template('login.html', error=error)
+  ```
+
+  
+
+* 如果用户使用浏览器地址传参数的方式，则要通过 **request.args** 属性获得，其也为一个 `OrderDict`
+
+  ```python
+  searchword = request.args.get('key', '')
+  ```
+
+### 文件上传
+
+文件上传非常简单，首先表单编写需要 `enctype="multipart/form-data"` 属性，接着通过 `request.files`属性获得,然后通过 `save`函数保存到绝对路径下
+
+```python
+from flask import request
+
+@app.route('/upload', methods=['GET', 'POST'])
+def upload_file():
+    if request.method == 'POST':
+        f = request.files['the_file']
+        f.save('/var/www/uploads/uploaded_file.txt')
+    ...
+```
+
+你可以通过 request.files['*xxxx*'].**filename** 属性来保存文件，但容易受到客户端恶意行为攻击，最佳的方法对文件名再做一个处理,下面的例子展示了 `werkzeug.utils.secure_filename` 函数的作用
+
+```python
+from flask import request
+from werkzeug.utils import secure_filename
+
+@app.route('/upload', methods=['GET', 'POST'])
+def upload_file():
+    if request.method == 'POST':
+        f = request.files['the_file']
+        f.save('/var/www/uploads/' + secure_filename(f.filename))
+    ...
+```
+
+请参考[详细的范例](https://flask.palletsprojects.com/en/1.1.x/patterns/fileuploads/#uploading-files)，其中对上传的文件存放位置配置以及上传文件的后缀做了限制
+
+### Session
+
+### 重定向和报错
 
 ### redirect函数
 
@@ -402,9 +572,6 @@ def internal_server_error(e):
 	return render_template('500.html'), 500
 ```
 
-
-
-## Session
 
 ## 弹框消息
 
@@ -442,6 +609,30 @@ def index():
 {% endblock %}
 ```
 
+## 请求的回应 Response
+
+Flask 处理用户的请求，采用下面的步骤作为响应
+
+1. 如果返回存在一个正确类型的 response 对象，那么将直接从 View 函数中返回
+2. 如果是一个**字符串**，将创建一个 response 对象以字符串作为数据配以默认参数
+3. 如果是一个**dict**, response 对象将使用 jsonify函数创建
+4. 如果是一个**tuple**, 满足一下几种格式 `(response, status)`, `(response, headers)`, 或者 `(response, status, headers)`，status将覆盖响应的状态，而headers将作为列表形式追加到头部信息
+5. 如果以上都不满足，Flask假设返回的是一个 WSGI 应用并尝试将其转化成 response 对象
+
+如果你想在最终响应处理之后，获得 response 对象，可以通过 `make_response`函数获得，并可以修改它
+
+```python
+@app.errorhandler(404)
+def not_found(error):
+    resp = make_response(render_template('error.html'), 404)
+    resp.headers['X-token'] = 'A value'
+    return resp
+```
+
+
+
+## API 和 JSON
+
 
 
 ## 链接
@@ -453,6 +644,20 @@ url_for函数
 ## 静态文件
 
 **url_for**('**static**', filename='css/styles.css', **_external**=True) 将解析为 *http://localhost:5000/static/css/styles.css*  
+
+```html
+{% block head %}
+{{ super() }}
+	<link rel="shortcut icon" href="{{ url_for('static', filename = 'favicon.ico') }}"
+type="image/x-icon">
+	<link rel="icon" href="{{ url_for('static', filename = 'favicon.ico') }}"
+type="image/x-icon">
+{% endblock %}
+```
+
+
+
+
 
 ## 项目结构
 
@@ -477,10 +682,7 @@ url_for函数
 
 ```shell
 （venv）$　pip install flask-migrate
-
 ```
-
-
 
 在 app.py 中
 
@@ -590,7 +792,7 @@ Entry 加入新的属性 `tags`, 是由 **db.relationship**函数返回值
 
 
 
-## Blueprint 蓝图
+## [Blueprint 蓝图](#blueprint)
 
 ## 命令行接口
 
