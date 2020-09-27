@@ -79,7 +79,7 @@ print(app.url_map)
 
 
 
-![标准程序编写调用流程](./Flask 入门.assets/image-20200904112932321.png)
+![标准程序编写调用流程](./Flask%20%E5%85%A5%E9%97%A8.assets/image-20200904112932321.png)
 
 
 
@@ -201,17 +201,17 @@ optional arguments:
 
 ## Debug
 
-![image-20200904110153188](./Flask 入门.assets/image-20200904110153188.png)
+![image-20200904110153188](./Flask%20%E5%85%A5%E9%97%A8.assets/image-20200904110153188.png)
 
 
 
 
 
-![image-20200904110221958](./Flask 入门.assets/image-20200904110221958.png)
+![image-20200904110221958](./Flask%20%E5%85%A5%E9%97%A8.assets/image-20200904110221958.png)
 
 
 
-![image-20200904110236720](./Flask 入门.assets/image-20200904110236720.png)
+![image-20200904110236720](./Flask%20%E5%85%A5%E9%97%A8.assets/image-20200904110236720.png)
 
 
 
@@ -414,7 +414,7 @@ def create_app():
 
 其中预先定义好的`block`, 请参考[官方文档](https://pythonhosted.org/Flask-Bootstrap/basic-usage.html#available-blocks)
 
-![image-20200910134827720](./Flask 入门.assets/image-20200910134827720.png)
+![image-20200910134827720](./Flask%20%E5%85%A5%E9%97%A8.assets/image-20200910134827720.png)
 
 >  上面提及到 `super()`，bootstrap 模版中的 `scripts` *block* 一定要调用此函数，否则会将`jquery.js`和`bootstrap.min.js`覆盖了
 
@@ -495,11 +495,11 @@ class NameForm(Form):
 
 下图中为 Flask-wtf 定义和映射到网页中的字段
 
-![image-20200910170440739](./Flask 入门.assets/image-20200910170440739.png)
+![image-20200910170440739](./Flask%20%E5%85%A5%E9%97%A8.assets/image-20200910170440739.png)
 
 下图中为`wtforms.validators`验证的函数器
 
-![image-20200910170643303](./Flask 入门.assets/image-20200910170643303.png)
+![image-20200910170643303](./Flask%20%E5%85%A5%E9%97%A8.assets/image-20200910170643303.png)
 
 ### 在模版中的渲染
 
@@ -1141,7 +1141,7 @@ manager.run()
 
 如图
 
-![image-20200904161914087](E:\Documents\Flask 入门.assets\image-20200904161914087.png)
+![image-20200904161914087](./Flask%20%E5%85%A5%E9%97%A8.assets/image-20200904161914087.png)
 
 ```python
 import datetime, re
@@ -1329,7 +1329,7 @@ if __name__ == '__main__':
 
 ### 数据类型
 
-![image-20200914224011594](./Flask 入门.assets/image-20200914224011594.png)
+![image-20200914224011594](./Flask%20%E5%85%A5%E9%97%A8.assets/image-20200914224011594.png)
 
 ### 逻辑非与或
 
