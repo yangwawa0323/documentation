@@ -26,15 +26,134 @@ pip install flask
 
 Flask 是基于最为短小精干的 Werkzeug 的web框架，个人认为最主要的三个核心部分为路由，模版，和数据库交互。其中路由选择可以快速的映射成对用户请求的响应函数。
 
+路由由一个极为方便的装饰器 `@app.route`定义
+
+```python
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/')
+def hello_world():
+    return 'Hello, World!'
+
+@app.route('/about')
+def about_me():
+    return 'Our company ...'
+```
+
+### 带参数的URL,变量规则
+
+```python
+from markupsafe import escape
+
+@app.route('/user/<username>')
+def show_user_profile(username):
+    # show the user profile for that user
+    return 'User %s' % escape(username)
+
+@app.route('/post/<int:post_id>')
+def show_post(post_id):
+    # show the post with the given id, the id is an integer
+    return 'Post %d' % post_id
+
+@app.route('/path/<path:subpath>')
+def show_subpath(subpath):
+    # show the subpath after /path/
+    return 'Subpath %s' % escape(subpath)
+
+```
+
+参数类型写在"<>"中，有以下五种：
+
+* string: 缺省类型
+* int: 正整数
+* float: 正浮点值
+* path: 和`string`相同，不过它接受 `/`反斜杠
+* uuid: `uuid` 格式字符串
+
+
+
 ```python
 print(app.url_map)
 ```
 
 
 
-![标准程序编写调用流程](E:\Documents\Flask 入门.assets\image-20200904112932321.png)
+![标准程序编写调用流程](./Flask 入门.assets/image-20200904112932321.png)
 
 
+
+## 启用 Flask APP
+
+两种方式运行 Flask
+
+1. 设置环境变量 `FLASK_APP`,然后调用 `flask run`
+
+```shell
+$ export FLASK_APP=hello.py
+$ flask run
+* Running on http://127.0.0.1:5000/
+```
+
+> Windows 下 `set FLASK_APP=hello.py`
+
+2. 直接运行     
+
+```shell
+python -m flask run
+```
+
+> `create_app(config)`为Factory工厂函数，它是缺省 `flask run` 的入口
+
+
+
+## Flask 配置
+
+而生成私钥可以通过下面语句实现
+
+```shell
+$ python -c 'import os; print(os.urandom(16))'
+b'_5#y2L"F4Q8z\n\xec]/'
+```
+
+
+
+## Flask 全局变量
+
+Flask环境下四个全局变量，不用引用即可调用
+
+* **current_app**：应用程序上下文
+
+```python
+  >>> from hello import app
+  >>> from flask import current_app
+  >>> current_app.name
+  Traceback (most recent call last):
+  ...
+  RuntimeError: working outside of application context
+  >>> app_ctx = app.app_context()
+  >>> app_ctx.push()
+  >>> current_app.name
+  'hello'
+  >>> app_ctx.pop()
+```
+
+  
+
+* **g**： 应用程序上下文
+
+* **request**： 请求上下文
+
+* **session**： 请求上下文
+
+
+
+## 请求的钩子
+
+* **before_first_request**:　在第一请求时注册钩子函数
+* **before_request**：每个请求之前
+* **after_request**： 注册一个函数在每个请求之后，只有不出现未处理的异常的情况下
+* **teardown_request**：与`after_request`相同，不过无论是否出现异常
 
 ## flask-script 命令行插件
 
@@ -49,7 +168,7 @@ from flask_script import Manager
 manager = Manager(app)
 # ...
 if __name__ == '__main__':
-manager.run()
+    manager.run()
 ```
 
 原有的主程序运行将扩展成以下两种```shell```和```runserver```
@@ -82,15 +201,17 @@ optional arguments:
 
 ## Debug
 
-![image-20200904110153188](E:\Documents\Flask 入门.assets\image-20200904110153188.png)
+![image-20200904110153188](./Flask 入门.assets/image-20200904110153188.png)
 
 
 
-![image-20200904110221958](E:\Documents\Flask 入门.assets\image-20200904110221958.png)
+
+
+![image-20200904110221958](./Flask 入门.assets/image-20200904110221958.png)
 
 
 
-![image-20200904110236720](E:\Documents\Flask 入门.assets\image-20200904110236720.png)
+![image-20200904110236720](./Flask 入门.assets/image-20200904110236720.png)
 
 
 
@@ -152,26 +273,26 @@ Hello, {{ name|capitalize }}
 
  7.  format
 
-     ```html
+```html
      {{ "%s, %s!"|format(greeting, name) }}
      Hello, World!
      {{ "%s, %s!" % (greeting, name) }}
      {{ "{}, {}!".format(greeting, name) }}
-     ```
+```
 
-     
+​     
 
 ### 条件判断控制
 
 * `if ... else` 条件判断
 
-  ```html
+```html
   {% if user %}
      Hello, {{ user }}!
   {% else %}
      Hello, Stranger!
   {% endif %}
-  ```
+```
 
   
 
@@ -235,7 +356,7 @@ Hello, {{ name|capitalize }}
 
 
 
-#### 使用 bootstrap
+### 使用 bootstrap
 
 可以在模版中使用 bootstrap 前端的框架，Flask自带 `flask-bootstrap`插件扩展
 
@@ -293,7 +414,7 @@ def create_app():
 
 其中预先定义好的`block`, 请参考[官方文档](https://pythonhosted.org/Flask-Bootstrap/basic-usage.html#available-blocks)
 
-![image-20200910134827720](E:\Documents\Flask 入门.assets\image-20200910134827720.png)
+![image-20200910134827720](./Flask 入门.assets/image-20200910134827720.png)
 
 >  上面提及到 `super()`，bootstrap 模版中的 `scripts` *block* 一定要调用此函数，否则会将`jquery.js`和`bootstrap.min.js`覆盖了
 
@@ -303,6 +424,41 @@ def create_app():
 <script type="text/javascript" src="my-script.js"></script>
 {% endblock %}
 ```
+
+
+
+### 自定义模版组件
+
+如果需要定义前端插件保持网站一致性，可以生成网页在其中通过 `macro`块定义，如同定义一个函数一般,甚至可以提供默认值
+
+```html
+<!-- forms.html //-->
+{% macro input(name, value='', type='text') -%}
+    <input type="{{ type }}" value="{{ value|e }}" name="{{ name }}">
+{%- endmacro %}
+
+{%- macro textarea(name, value='', rows=10, cols=40) -%}
+    <textarea name="{{ name }}" rows="{{ rows }}" cols="{{ cols
+        }}">{{ value|e }}</textarea>
+{%- endmacro %}
+```
+
+ 而在其他模版中需要使用上面定义到的表单元器件，两步完成，先导入，再提供变量
+
+```html
+{% import 'forms.html' as forms %}
+<dl>
+    <dt>Username</dt>
+    <dd>{{ forms.input('username') }}</dd>
+    <dt>Password</dt>
+    <dd>{{ forms.input('password', type='password') }}</dd>
+</dl>
+<p>{{ forms.textarea('comment') }}</p>
+```
+
+
+
+
 
 ## Web Form 表单
 
@@ -339,11 +495,11 @@ class NameForm(Form):
 
 下图中为 Flask-wtf 定义和映射到网页中的字段
 
-![image-20200910170440739](E:\Documents\Flask 入门.assets\image-20200910170440739.png)
+![image-20200910170440739](./Flask 入门.assets/image-20200910170440739.png)
 
 下图中为`wtforms.validators`验证的函数器
 
-![image-20200910170643303](E:\Documents\Flask 入门.assets\image-20200910170643303.png)
+![image-20200910170643303](./Flask 入门.assets/image-20200910170643303.png)
 
 ### 在模版中的渲染
 
@@ -486,7 +642,7 @@ from flask import request
 
 * 用户提交的表单数据，通过 **request.form** 属性获得，其为一个`OrderDict`, 获取不到指定的Key，会出现 `keyError`异常,如果你不认为处理异常，将会出现 `HTTP 400 Bad Request`作为服务器给客户端浏览器的响应 
 
-  ```python
+```python
   @app.route('/login', methods=['POST', 'GET'])
   def login():
       error = None
@@ -499,15 +655,15 @@ from flask import request
       # the code below is executed if the request method
       # was GET or the credentials were invalid
       return render_template('login.html', error=error)
-  ```
+```
 
   
 
 * 如果用户使用浏览器地址传参数的方式，则要通过 **request.args** 属性获得，其也为一个 `OrderDict`
 
-  ```python
+```python
   searchword = request.args.get('key', '')
-  ```
+```
 
 ### 文件上传
 
@@ -541,6 +697,44 @@ def upload_file():
 请参考[详细的范例](https://flask.palletsprojects.com/en/1.1.x/patterns/fileuploads/#uploading-files)，其中对上传的文件存放位置配置以及上传文件的后缀做了限制
 
 ### Session
+
+Session用于保持用户与服务器通信过程中的会话数据，设置时直接通过字典形式对 `Key` 赋值，而清空则用 `pop`函数
+
+```python
+from flask import Flask, session, redirect, url_for, request
+from markupsafe import escape
+
+app = Flask(__name__)
+
+# Set the secret key to some random bytes. Keep this really secret!
+app.secret_key = b'_5#y2L"F4Q8z\n\xec]/'
+
+@app.route('/')
+def index():
+    if 'username' in session:
+        return 'Logged in as %s' % escape(session['username'])
+    return 'You are not logged in'
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        session['username'] = request.form['username']
+        return redirect(url_for('index'))
+    return '''
+        <form method="post">
+            <p><input type=text name=username>
+            <p><input type=submit value=Login>
+        </form>
+    '''
+
+@app.route('/logout')
+def logout():
+    # remove the username from the session if it's there
+    session.pop('username', None)
+    return redirect(url_for('index'))
+```
+
+
 
 ### 重定向和报错
 
@@ -609,7 +803,7 @@ def index():
 {% endblock %}
 ```
 
-## 请求的回应 Response
+## Response 对请求的回应 
 
 Flask 处理用户的请求，采用下面的步骤作为响应
 
@@ -619,7 +813,7 @@ Flask 处理用户的请求，采用下面的步骤作为响应
 4. 如果是一个**tuple**, 满足一下几种格式 `(response, status)`, `(response, headers)`, 或者 `(response, status, headers)`，status将覆盖响应的状态，而headers将作为列表形式追加到头部信息
 5. 如果以上都不满足，Flask假设返回的是一个 WSGI 应用并尝试将其转化成 response 对象
 
-如果你想在最终响应处理之后，获得 response 对象，可以通过 `make_response`函数获得，并可以修改它
+如果你想在最终响应处理之后，获得 response 对象，可以通过 `make_response`函数获得，并可以修改它cd 
 
 ```python
 @app.errorhandler(404)
@@ -633,6 +827,28 @@ def not_found(error):
 
 ## API 和 JSON
 
+根据上面的第三条原则，如果视图函数直接返回 `dict`,将会将其转变成 JSON 格式
+
+```python
+@app.route("/me")
+def me_api():
+    user = get_current_user()
+    return {
+        "username": user.username,
+        "theme": user.theme,
+        "image": url_for("user_image", filename=user.image),
+    }
+```
+
+也可以通过 `jsonify`将对象序列化
+
+```python
+@app.route("/users")
+def users_api():
+    users = get_all_users()
+    return jsonify([user.to_json() for user in users])
+```
+
 
 
 ## 链接
@@ -641,7 +857,19 @@ app.add_url_route()
 
 url_for函数
 
+
+
 ## 静态文件
+
+关于静态文件存放位置，默认在 app 下建立 `static` 目录，也可以通过
+
+```python
+app = Flask(__name__, static_url_path='/static/v2')
+```
+
+在 Flask 实例化附带 `static_url_path` 参数
+
+而在模版中调用
 
 **url_for**('**static**', filename='css/styles.css', **_external**=True) 将解析为 *http://localhost:5000/static/css/styles.css*  
 
@@ -661,7 +889,210 @@ type="image/x-icon">
 
 ## 项目结构
 
-## 应用程序设置
+### 大型项目开发的文件目录结构
+
+|-**flasky**
+	|-**app**/
+		|-**templates**/					# 模版文件
+		|-**static**/							# 静态文件
+		|-**main**/							 # 每个单独子功能建立的目录
+			|-\_\_init\_\_.py
+			|-errors.py
+			|-forms.py
+			|-views.py
+		|-\_\_init\_\_.py
+		|-email.py
+		|-models.py
+		|-**migrations**/				# 存放Flask-migrate 数据库迁移升级生成的文件
+		|-**tests**/							# 测试程序
+			|-\_\_init\_\_.py
+			|-test*.py
+		|-***venv**/							# Python 虚拟环境
+	|-requirements.txt  
+	|-config.py
+	|-manage.py  
+
+
+
+### 设计思路
+
+1. config.py 中定义一个Config对象，基于这个对象为父类生成额外不同的配置子类。然后通过字典 `Key` 对应这些类名称
+
+```python
+import os
+basedir = os.path.abspath(os.path.dirname(__file__))
+
+
+class Config(object):
+   SECRET_KEY = os.environ.get('SECRET_KEY') or 'hard to guess string'
+   SQLALCHEMY_TRACK_MODIFICATIONS = False
+
+   @staticmethod
+   def init_app(app):
+       pass
+
+
+class DevelopmentConfig(Config):
+   SQLALCHEMY_DATABASE_URI = 'sqlite:///' + \
+       os.path.join(os.path.dirname(__file__), 'demo.db')
+   DEBUG = True
+   pass
+
+
+class TestingConfig(Config):
+   SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
+   pass
+
+
+config = {
+   'development': DevelopmentConfig,
+   'testing': TestingConfig,
+   'default': DevelopmentConfig,
+}
+```
+
+
+2.  主程序目录的`app.__init__.py` 前段为各个插件的实例化(**不是初始化**)，然后定义一个`create_app`或者`make_app`这两个工厂函数中的任意一个作为入口。在此函数中对初始化的插件此时对Flask初始化。
+
+```python
+from flask import Flask, render_template
+from flask_bootstrap import Bootstrap
+from flask_sqlalchemy import SQLAlchemy
+from config import config
+
+bootstrap = Bootstrap()
+db = SQLAlchemy()
+
+def create_app(config_name):
+   app = Flask(__name__)
+   app.config.from_object(config[config_name])
+   config[config_name].init_app(app)
+
+   bootstrap.init_app(app)
+   db.init_app(app)
+
+   from .main import main as main_bluepoint
+
+   app.register_blueprint(main_bluepoint)
+
+   return app
+
+```
+
+   > 17 - 19 行对蓝图的注册和引用，结合后面示例
+
+3. 在主程序下建立子程序目录，在目录的初始化文件`__init__.py`文件中定义蓝图。
+
+```python
+from flask import Blueprint
+
+main = Blueprint('main', __name__)
+
+if True:
+   from . import views
+```
+
+> 注意：一定要先定义蓝图，再引用视图，避免交叉循环引用报错
+>
+> app/main/\_\_init\_\_.py 引用 app/main/views.py
+>
+> ```python
+> from . import views
+> ```
+>
+> 而 app/main/views.py 又引用 app/main
+>
+> ```python
+> from . import main
+> 
+> @main.route('/hello')
+> def say_hello():
+>     return "Hello world!"
+> ```
+>
+> 如果你是使用VS code之类的可视化编程工具，安装了pylint, autopep8 之后, 编辑器会将 ```from...import...```语句自动的提升到`import...`之前，就会造成`__init__.py`从上至下初始化发觉要引用`views.py`，而`views.py`却要引用`main\__init__.py`。但如果先行将蓝图初始化再去调用`views.py`时，此时蓝图已经存在，所以一切正常。为了不让编辑器做出以上行为，我们可以在外面套娃一层`if True`
+
+4. 项目的顶层目录创建启动管理脚本`manage.py`,此时可以向工厂函数`create_app`传递需要使用何种配置启动的`Key`
+
+```python
+#!/usr/bin/env python
+import os
+from app import create_app, db
+
+# from app.models import User, Role
+from flask_script import Manager, Shell
+from flask_migrate import Migrate, MigrateCommand
+
+app = create_app(os.getenv('FLASK_CONFIG') or 'default')
+manager = Manager(app)
+migrate = Migrate(app, db)
+
+# def make_shell_context():
+#     return dict(app=app, db=db, User=User, Role=Role)
+
+# manager.add_command("shell", Shell(make_context=make_shell_context))
+manager.add_command('db', MigrateCommand)
+
+if __name__ == '__main__':
+    manager.run()
+```
+
+5. 作为建模都写入`app/models.py`下
+
+```python
+from app import db
+
+class User(db.Model):
+    __tablename__ = 'users'
+    user_id = db.Column(db.Integer, primary_key=True)
+    pass
+```
+
+6. 视图文件中都以相对路径形式调用 , 比如`app/main/views.py`
+
+```python
+from . import main
+from .forms import NameForm
+from .. import db
+from ..models import User
+
+# ...
+```
+
+### 应用程序设置
+
+使用单一程序运行有其弊端，建议使用工厂函数的方式创建应用程序，可以让其传递不同的配置（通过环境变量）来创建程序，这在测试中非常方便。Flask具有者`create_app`默认入口程序，在它之前可以执行各种扩展插件的初始化工作，而在`create_app`中则通过`init_app`函数将插件衔接过来。下面是一个典型的例子
+
+```python
+from flask import Flask, render_template
+from flask.ext.bootstrap import Bootstrap
+from flask.ext.mail import Mail
+from flask.ext.moment import Moment
+from flask.ext.sqlalchemy import SQLAlchemy
+from config import config
+
+bootstrap = Bootstrap()
+mail = Mail()
+moment = Moment()
+db = SQLAlchemy()
+
+def create_app(config_name):
+	app = Flask(__name__)
+	app.config.from_object(config[config_name])
+	config[config_name].init_app(app)
+	bootstrap.init_app(app)
+	mail.init_app(app)
+	moment.init_app(app)
+	db.init_app(app)
+#	 attach routes and custom error pages here
+	return app
+```
+
+
+
+
+
+
 
 ## 数据库访问
 
@@ -794,6 +1225,60 @@ Entry 加入新的属性 `tags`, 是由 **db.relationship**函数返回值
 
 ## [Blueprint 蓝图](#blueprint)
 
+蓝图可以想象成大型施工工地的施工图纸，不同的图纸标注的不同建筑如何施工，所有的图纸加在一起构成大型项目，施工可以分开按图纸施工。
+
+蓝图的创建,比如写入 `app/main/__init__.py`，由于写在目录下的初始化文件中，只要 `import main`将自动调用
+
+```python
+from flask import Blueprint
+main = Blueprint('main', __name__)
+
+from . import views, errors
+```
+
+而视图文件 `app/main/views.py`内容如下
+
+```python
+from datetime import datetime
+from flask import render_template, session, redirect, url_for
+from . import main
+from .forms import NameForm
+from .. import db
+from ..models import User
+
+@main.route('/', methods=['GET', 'POST'])
+def index():
+	form = NameForm()
+	if form.validate_on_submit():
+		# ...
+		return redirect(url_for('.index'))
+	return render_template('index.html',
+                form=form, name=session.get('name'),
+				known=session.get('known', False),
+				current_time=datetime.utcnow())
+```
+
+
+
+> 注意第三行,`from . import main`，由于main的一个目录所以将调用其下`__init__.py`初始化
+
+
+
+蓝图也是一样，你可以交由不同的小组开发子模块，子模块中如何路由，如果处理用户的请求。最终合成的时候，只要对蓝图注册到程序中即可（通过`register_blueprint`）。一般写在工厂函数内部注册
+
+
+
+```python
+def create_app(config_name):
+	# ...
+	from main import main as main_blueprint
+	app.register_blueprint(main_blueprint)
+    
+	return app
+```
+
+
+
 ## 命令行接口
 
 ## Live reload 调试
@@ -840,14 +1325,329 @@ if __name__ == '__main__':
 
 
 
-##  官方参考文档
+## SQLAlchemy数据库的操作
 
-* [Flask 1.1](https://flask.palletsprojects.com/en/1.1.x/)
-* [flask-migrate](https://flask-migrate.readthedocs.io/en/latest/)
-* [flask-bootstrap](https://pythonhosted.org/Flask-Bootstrap/index.html)
+### 数据类型
+
+![image-20200914224011594](./Flask 入门.assets/image-20200914224011594.png)
+
+### 逻辑非与或
+
+`from sqlalchemy import or_, and_,not_`
+
+```python
+from app.models import User
+from app import db
+
+yk = User(username='yangwawa',name='yAnGwAwA0323', email='yangwawa0323@163.com')
+yk.password = 'redhat'
+
+lc = User(username='liuChan', name='blue', email = 'blue@yahoo.com.cn')
+lc.password = 'dsybs'
+
+wq = User(username='wangqiang', name='wangQ', email='wq@qq.com')
+
+db.session.add_all(yk,lc,wq)
+db.session.commit()
+
+statement = db.select([User]).where(
+	or_( User.name == 'yangwawa0323', User.email.like('%qq.com'))
+)
+print(statement)
+
+rows = db.session.execute(statement)
+```
+
+
+
+#### equals:
+
+```
+query.filter(User.name == 'leela')
+```
+
+#### not equals:
+
+```
+query.filter(User.name != 'leela')
+```
+
+#### LIKE:
+
+```
+query.filter(User.name.like('%leela%'))
+```
+
+#### IN:
+
+```
+query.filter(User.name.in_(['leela', 'akshay', 'santanu']))
+
+# works with query objects too:
+
+query.filter(User.name.in_(session.query(User.name).filter(User.name.like('%santanu%'))))
+```
+
+#### NOT IN:
+
+```
+query.filter(~User.name.in_(['lee', 'sonal', 'akshay']))
+```
+
+#### IS NULL:
+
+```
+filter(User.name == None)
+```
+
+#### IS NOT NULL:
+
+```
+filter(User.name != None)
+```
+
+#### AND:
+
+```
+from sqlalchemy import and_
+filter(and_(User.name == 'leela', User.fullname == 'leela dharan'))
+
+#or, default without and_ method comma separated list of conditions are AND
+
+filter(User.name == 'leela', User.fullname == 'leela dharan')
+
+# or call filter()/filter_by() multiple times
+
+filter(User.name == 'leela').filter(User.fullname == 'leela dharan')
+```
+
+#### OR:
+
+```
+from sqlalchemy import or_
+filter(or_(User.name == 'leela', User.name == 'akshay'))
+```
+
+#### match:
+
+```
+query.filter(User.name.match('leela'))
+```
+
+### Flask 序列化
+
+`jsonify`不能对数据模型的实例序列化，我们需要安装 **marshmallow** 来实现
+
+```shell
+pip install marshmallow
+```
+
+而在`models.py`建模中
+
+```python
+from marshmallow import Schema
+
+class UserSchema(Schema):
+    class Meta:
+        fields = ('email', 'username', 'name')
+
+class User(UserMixin, db.Model):
+    __tablename__ = 'users'
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(64), unique=True, index=True)
+    username = db.Column(db.String(64), unique=True, index=True)
+    #...
+    name = db.Column(db.String(64))
+```
+
+而序列化的使用如下
+
+```python
+from app.models import User,UserSchema
+
+users = User.query.all()
+
+userSchema = UserSchema()
+serialize = userSchema.dump(users,many=True)
+
+print(serialize)
+```
+
+> 注意：在调用dump函数时，如果是多个对象（查询返回的list）需要添加 many=True, 否则无法正确序列化
+
+
+
+## JWT 基于token令牌验证
+
+
+
+### 基本用法
+
+使用`create_access_token`函数形成一个新的访问**Token**, `jwt_required`装饰器用于保护 `endpoint`, `get_jwt_identity`函数用来获取受保护的 `endpoint`上的identity。
+
+```python
+from flask import Flask, jsonify, request
+from flask_jwt_extended import (
+    JWTManager, jwt_required, create_access_token,
+    get_jwt_identity
+)
+
+app = Flask(__name__)
+
+# Setup the Flask-JWT-Extended extension
+app.config['JWT_SECRET_KEY'] = 'super-secret'  # Change this!
+jwt = JWTManager(app)
+
+
+# Provide a method to create access tokens. The create_access_token()
+# function is used to actually generate the token, and you can return
+# it to the caller however you choose.
+@app.route('/login', methods=['POST'])
+def login():
+    if not request.is_json:
+        return jsonify({"msg": "Missing JSON in request"}), 400
+
+    username = request.json.get('username', None)
+    password = request.json.get('password', None)
+    if not username:
+        return jsonify({"msg": "Missing username parameter"}), 400
+    if not password:
+        return jsonify({"msg": "Missing password parameter"}), 400
+
+    if username != 'test' or password != 'test':
+        return jsonify({"msg": "Bad username or password"}), 401
+
+    # Identity can be any data that is json serializable
+    access_token = create_access_token(identity=username)
+    return jsonify(access_token=access_token), 200
+
+
+# Protect a view with jwt_required, which requires a valid access token
+# in the request to access.
+@app.route('/protected', methods=['GET'])
+@jwt_required
+def protected():
+    # Access the identity of the current user with get_jwt_identity
+    current_user = get_jwt_identity()
+    return jsonify(logged_in_as=current_user), 200
+
+
+if __name__ == '__main__':
+    app.run()
+```
+
+要访问受保护的`view`,需要在请求头中发送 **JWT** 信息，默认如下：
+
+`Authentication: Bear <access_token>`
+
+客户端先行提交账户密码信息验证，如果通过验证，将收到服务器给予的令牌
+
+```shell
+$ curl http://localhost:5000/protected
+{
+  "msg": "Missing Authorization Header"
+}
+
+$ curl http://localhost:5000/protected
+{
+  "msg": "Missing Authorization Header"
+}
+
+$ curl -H "Content-Type: application/json" -X POST \
+  -d '{"username":"test","password":"test"}' http://localhost:5000/login
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6dHJ1ZSwianRpIjoiZjhmNDlmMjUtNTQ4OS00NmRjLTkyOWUtZTU2Y2QxOGZhNzRlIiwidXNlcl9jbGFpbXMiOnt9LCJuYmYiOjE0NzQ0NzQ3OTEsImlhdCI6MTQ3NDQ3NDc5MSwiaWRlbnRpdHkiOiJ0ZXN0IiwiZXhwIjoxNDc0NDc1NjkxLCJ0eXBlIjoiYWNjZXNzIn0.vCy0Sec61i9prcGIRRCbG8e9NV6_wFH2ICFgUGCLKpc"
+}
+
+```
+
+接着拿着**令牌**去访问受保护的 View
+
+```shell
+$ export ACCESS="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJmcmVzaCI6dHJ1ZSwianRpIjoiZjhmNDlmMjUtNTQ4OS00NmRjLTkyOWUtZTU2Y2QxOGZhNzRlIiwidXNlcl9jbGFpbXMiOnt9LCJuYmYiOjE0NzQ0NzQ3OTEsImlhdCI6MTQ3NDQ3NDc5MSwiaWRlbnRpdHkiOiJ0ZXN0IiwiZXhwIjoxNDc0NDc1NjkxLCJ0eXBlIjoiYWNjZXNzIn0.vCy0Sec61i9prcGIRRCbG8e9NV6_wFH2ICFgUGCLKpc"
+
+$ curl -H "Authorization: Bearer $ACCESS" http://localhost:5000/protected
+{
+  "logged_in_as": "test"
+}
+```
+
+
+
+### 部分保护
+
+使用`jwt_optional`装饰器可以对 view 实现部分保护，作为可选项，如果可以获取到token信息，适用于A方案，否则B计划场景
+
+```python
+@app.route('/partial-protected', methods=('GET',))
+@jwt_optional
+def partial_protected():
+    current_user = get_jwt_identity()
+    if current_user:
+        return jsonify(logged_as_user=current_user), 200
+    else:
+        return jsonify(logged_as_user='Anonymous'), 200
+```
+
+
+
+### 用户自定义 token 中的附加信息
+
+通过`@jwt.user_claims_loader`装饰器，指定一个函数，函数返回`JSON`格式信息将作为附加信息
+
+```python
+from flask_jwt_extended import get_jwt_claims
+# Using the user_claims_loader, we can specify a method that will be
+# called when creating access tokens, and add these claims to the said
+# token. This method is passed the identity of who the token is being
+# created for, and must return data that is json serializable
+@jwt.user_claims_loader
+def add_claims_to_access_token(identity):
+    return {
+        'hello': identity,
+        'foo': ['bar', 'baz']
+    }
+
+#...
+# In a protected view, get the claims you added to the jwt with the
+# get_jwt_claims() method
+@app.route('/protected', methods=['GET'])
+@jwt_required
+def protected():
+    claims = get_jwt_claims()
+    return jsonify({
+        'hello_is': claims['hello'],
+        'foo_is': claims['foo']
+    }), 200
+```
+
+
+
+这样通过Chrome Advanced REST client 获取的请求将如下
+
+![image-20200927174026789](./Flask%20%E5%85%A5%E9%97%A8.assets/image-20200927174026789.png)
+
+
+
+## CoreUI
+
+[Jinjia2 模版]()
+
+```shell
+git clone https://github.com/app-generator/theme-jinja2-coreui.git
+```
+
+
+
+##官方参考文档
+
+* [Flask 1.1官方文档](https://flask.palletsprojects.com/en/1.1.x/)
+* [flask-migrate数据库迁移库](https://flask-migrate.readthedocs.io/en/latest/)
+* [flask-bootstrap前端框架](https://pythonhosted.org/Flask-Bootstrap/index.html)
 * [bootstrap 3.4](https://getbootstrap.com/docs/3.4/css/)
-* [SQLAlchemy](https://docs.sqlalchemy.org/en/13/)
-* [Jinja2](https://jinja.palletsprojects.com/en/2.11.x/)
-* [Vue 2.0](https://cn.vuejs.org/v2/guide/)
-* [Jquery API](https://api.jquery.com/)
+* [SQLAlchemy数据库函数库](https://docs.sqlalchemy.org/en/13/)
+* [Jinja2模版](https://jinja.palletsprojects.com/en/2.11.x/)
+* [Vue 2.0前端框架](https://cn.vuejs.org/v2/guide/)
+* [Jquery API前端框架](https://api.jquery.com/)
+* [marshmallow序列化工具库](https://marshmallow.readthedocs.io/en/stable/quickstart.html)
 
