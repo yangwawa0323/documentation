@@ -1,8 +1,12 @@
-Openstack 应用
+# Openstack 应用
 
 ## 云平台预科知识
 
+无论你将来想使用的是哪一种云平台， Openstack，cloudstack， vsphere 等。它们的底层都是基于 Linux Kernel Virtual Machine（KVM）内核虚拟化技术的。所以让我们先从一台单机环境下掌握 KVM技术。之后再通过对Openstack的了解和深度的学习完成企业云平台的架构。
+
 ### KVM 内核虚拟化
+
+
 
 #### kvm初始化
 
@@ -18,128 +22,120 @@ Openstack 应用
 * qemu-img
 *  qemu-system-x86_64
 
-#### QEMU Tutorial with Examples
+#### QEMU 使用指南
 
-
-
-Qemu is a very old virtualization technology used to virtualize system components and run operating systems on it. Before KVM and XEN QEMU was used heavily but it can not race with VMWARE or VIRTUAL PC. But with the KVM Qemu get superfast speed for computing by using hardware-based virtualization. QEMU acts as a hardware supplier and KVM is the CPU. KVM resides in Linux kernel and there is a little configuration for it. A virtualization configuration is made on the QEMU.
+Qemu 是一个成熟且历史悠久（相对计算机的发展）的利用操作系统实现虚拟化技术. 如果你之前使用过 `VMWARE` 、 `VIRTUAL PC`这类的产品软件. 当你切换到 KVM Qemu时，你的第一感触就是觉得非常的快，因为它使用的是基于硬件下的虚拟化技术. QEMU扮演的是计算机硬件角色而 KVM 指的就是 CPU. 虽然这样，我们还是要对它做小小的配置.
 
 ##### qemu-kvm or qemu or qemu-system-x86_64
 
-Qemu is a very old and big project which has different user bases and intersecting with different projects. Qemu is used in the Linux Kernel Virtualization project named KVM. So this project also provides Qemu with different command names but with more features. `qemu-system-x86_64` is the binary or command for Qemu which is used to create 64-bit x86 VMs.
+Qemu是一个历史悠久的大项目. Qemu 基于Linux Kernel Virtualization 项目的名称就命名为KVM.不同的版本基于不同的处理器类型.比如 `qemu-system-x86_64` 就是基于 Intel 框架下64-bit x86结构的虚拟机二进制程序.
 
-##### Install Qemu
+##### 安装 Qemu
 
-We can install Qemu with the `qemu` package name for different distributions.
+我们可以安装不同版本的Qemu，有针对于当前流行的处理器类型的多个版本
 
-##### Install Qemu For Ubuntu, Debian, Mint, Kali
-
-We will use the following command.
+##### 在 Ubuntu, Debian, Mint, Kali 下安装
 
 ```
 $ sudo apt install qemu
 ```
 
-![Install Qemu For Ubuntu, Debian, Mint, Kali](Openstack.assets/img_5d7704e3523e0.png)Install Qemu For Ubuntu, Debian, Mint, Kali
+![Install Qemu For Ubuntu, Debian, Mint, Kali](Openstack.assets/img_5d7704e3523e0.png)
 
-##### Install Qemu For Fedora, CentOS, Red Hat
+##### 在 Fedora, CentOS, Red Hat 下安装
 
-We will use both dnf and yum package managers according to distribution for rpm based install.
+我们可以使用 `dnf` 或者 `yum`的安装方式
 
 ```
 $ sudo dnf install qemu
 ```
 
-OR
+或者
 
 ```
 $ sudo yum install qemu
 ```
 
-##### qemu Command Help
+##### qemu 命令帮助
 
-We can list short help information about the `qemu` like below by using `-h` option.
+我们可以获得 `qemu` 帮助信息，通过 `-h` 选项即可.
 
 ```
 $ qemu-system-x86_64 -h
 ```
 
-![Help](Openstack.assets/img_5d7705629ca76.png)Help
+![Help](Openstack.assets/img_5d7705629ca76.png)
 
-##### qemu Command Syntax
+##### qemu 命令语法
 
-Qemu syntax is the same as most of the Linux commands.
+绝大多数的命令操作都基于下面的格式
 
 ```
 qemu-system-x86_64 OPTIONS IMAGE
 ```
 
-- `OPTIONS` are provided for VM options like Ram size, features, CPU, Graphics, etc.
-- `IMAGE` is the file name of the disk for the VM.
+- `OPTIONS` 提供VM 硬件环境，比如内存大小, CPU核的数量，图形等.
+- `IMAGE` 就是运行的镜像的名称.
 
-[**LEARN MORE** How To Install VMware Tools To The Linux Debian, Ubuntu, Kali, Mint, Fedora, CentOS, RHEL Distributions](https://www.poftut.com/install-vmware-tools-to-the-linux-debian-ubuntu-kali-mint-fedora-centos-rhel-distributions/)
+[**参考文档** How To Install VMware Tools To The Linux Debian, Ubuntu, Kali, Mint, Fedora, CentOS, RHEL Distributions](https://www.poftut.com/install-vmware-tools-to-the-linux-debian-ubuntu-kali-mint-fedora-centos-rhel-distributions/)
 
-##### Download Cloud Images
+##### 下载云镜像
 
-Popular Linux distributions like Fedora, CentOS, Debian, Ubuntu, RedHat provides virtual machine images in various formats like raw, qcow2, vmdk, etc. We will download the Fedora 25 cloud image from the following link which is provided by the Fedora Project. Download with wget like below.
+市场上流行的 Linux 有 Fedora, CentOS, Debian, Ubuntu, RedHat 它们都提供了不同格式的虚拟机镜像比如  raw, qcow2, vmdk.
 
 ```shell
-$ wget http://www.nic.funet.fi/pub/mirrors/fedora.redhat.com/pub/fedora/linux/releases/30/Cloud/x86_64/images/Fedora-Cloud-Base-30-1.2.x86_64.qcow2
+$ wget https://download.fedoraproject.org/pub/fedora/linux/releases/33/Cloud/x86_64/images/Fedora-Cloud-Base-33-1.2.x86_64.qcow2
 ```
 
-![Download Cloud Images](Openstack.assets/img_5d7707344fc81.png)Download Cloud Images
+![Download Cloud Images](Openstack.assets/img_5d7707344fc81.png)
 
-##### Set CPU and Core Count for Qemu VM
+##### 
 
-CPU is one of the most important parts of a system. We can set the CPU core count for the VM in Qemu. We will provide the `-smp` option which will enable multiple CPU cores with the `core=2` value which will set the core count 2 in the given VM.
+设置  CPU 核 的数量
+
+CPU也是一个重要的部分， 我们可以通过 `-smp` 选项开启多 CPU核模式再通过 `core=2`这样的方式设定 VM 启动环境下 CPU 的数量.
 
 ```
 $ qemu-system-x86_64 -smp cores=2
 ```
 
-##### Boot From Network
+##### 从 PXE 网络环境引导
 
-There are different ways to boot the VM system. Generally, images are used to boot but we can also boot from a network with the `-boot order=nc` option.
+如果公司内部有着网络PXE的安装环境，我们可以指定 `-boot order=nc` 选项.
 
-```
+```shell
 $ qemu-system-x86_64 -boot order=nc
 ```
 
-##### Set RAM or Memory Size For Qemu VM
+##### 为虚拟机设置内存大小
 
-RAM is another important component of the VM. By default 128 MB RAM is set for the started VM. But we can also set the RAM size explicitly with the `-m` option which is the short form of the memory. We will also provide the size as MB where we will set 256 MB Ram in this example.
+内存是VM的一个重要的组件.默认为128M大小，我们可以通过 `-m` 选项指定VM启动的大小.下面例子中指定为256M.
 
-```
+```shell
 $ qemu-system-x86_64 -m 256
 ```
 
-![Set RAM or Memory Size](Openstack.assets/img_5d770d7720ebe.png)Set RAM or Memory Size
 
-##### Set VM Name For Qemu
 
-We have also the option to set a name for the VM. We can use the `-name` option and provide the VM name. The VM name will be displayed in the Window header of the Qemu. In this example, we will set the VM name as `poftut.com`.
+![设置内存大小](Openstack.assets/img_5d770d7720ebe.png)
+
+##### 设置虚拟机的名称
+
+我们可以通过 `-name` 选项提供 VM 名称.
 
 ```
 $ qemu-system-x86_64 -name poftut.com
 ```
 
-##### Specify Disk File or Image For Qemu VM
+##### 为 Qemu VM 指定文件
 
-We can specify the disk/image file with the `-drive` option. This will provides us some ability to specify extra drivers related options. `file` is used to specify the file size. Also `if` is used to provide the driver or interface type for the disk.
+我们可以指定磁盘/镜像的文件，通过 `-drive` 选项.同样 `if` 用来配置网卡 NIC 类型
 
 ```
 $ qemu-system-x86_64 -drive file=fedoraraw.qcow2,if=virtio
 ```
 
-##### Disable GUI for Qemu VM
-
-By default, the VM console will be provided as a GUI window. But we can also disable the console and only provide the terminal of the system with the `-nographic` option.
-
-```
-$ qemu-system-x86_64 -nographic
-```
-
-##### 连接到虚拟交换机比如 virbr0
+##### 配置虚拟机网络
 
 默认虚拟机启动存在单一一个网卡而且不连接任何地方，因而无法通过网络访问. 我们可以添加一个网络接口并且将其连接到宿主主机上的一个桥接`bridge`设备。 下面的例子，我们将连接到一个类型为 `virtio` 网卡并模拟网络连线到虚拟交换机 `virbr0`上 .
 
@@ -159,13 +155,35 @@ $ qemu-system-x86_64 -drive file=ssh://ismail@baydan.com/disk.img
 
 #### 利用逻辑卷快照快速安装第二套系统
 
+安装自己一套系统或者对系统调优的过程是重复、耗时、枯燥的。很多的云平台对新用户安装系统，只是点击几下，选择几下，系统在短短的时间就创建成功了，这要怎么实现？
+
+答案是逻辑卷的**快照**。
+
+
+
 #### 单机环境kvm的弊端
 
+* 宿主主机硬件上限
 
+  宿主主机内存再大，CPU再多，也不能满足企业集团数以百计的不同的应用所需要的虚拟化环境，比如 256G 内存， 32 core的服务器下，每个VM使用4G来计算，（256 / 4）  -  1（宿主需要的内存）
 
+* 宿主主机硬件维修或宕机
 
+  服务器需要检修，或者宕机，那么跑在其上的虚拟机将团灭。
 
+* 底层存储
 
+  单机的硬盘再大也会遇到瓶颈，而多个虚拟机运行的数据获取来自同一块硬盘不可取。
+
+* 多服务的维护
+
+  如果有十多台服务器的中小企业环境，每台服务器上运行三到四个不多的VM，这种场景都会让你每天疲于奔命的找那个宿主主机上运行了什么VM的过程
+
+* 底层网络的配置
+
+    特别在多服务器的场景中，给每台VM做网络配置，并且保证地址不冲突，跨宿主主机之间的通信又是一个挑战。
+
+而这一切都将在开源云平台 openstack 上完美解决
 
 
 
