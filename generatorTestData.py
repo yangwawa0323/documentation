@@ -1,5 +1,16 @@
 # encoding: utf8
+# Author: yangwawa0323@163.com
+# Website: www.51cloudclass.com
 # generateTestData.py
+# Generate many fake data to Oracle, for ADDM and AWR monitoring purpose
+
+# Installation:
+# $ python -m venv venv
+# $ ./venv/bin/activate
+# $ pip install cx_oracle sqlalchemy faker
+#
+# Running:
+# $ python ./generateTestData.py
 
 import cx_Oracle
 from sqlalchemy import ( create_engine,Table,text,MetaData,Column,
