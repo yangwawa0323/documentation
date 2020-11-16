@@ -1,6 +1,7 @@
 # 云课堂课件
 
-![Logo](http://www.51cloudclass.com/static/images/cloudclass-transparent.png)
+![Logo](http://www.51cloudclass.com/static/images/CloudClass.png)
+![QRCode](https://api.qrserver.com/v1/create-qr-code/?data=http%3A%2F%2Fwww.51cloudclass.com%2Fdocs%2F&size=180x180)
 
 ## 数据库
 * [mysql范例数据库world](https://github.com/yangwawa0323/documentation/blob/master/world.sql)
