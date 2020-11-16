@@ -9,6 +9,8 @@
 * [Python消息队列 RabbitMQ](https://github.com/yangwawa0323/documentation/blob/master/RabbitMQ.md)
 * [Flask入门](https://github.com/yangwawa0323/documentation/blob/master/Flask%20%E5%85%A5%E9%97%A8.md)
 
+## 虚拟化和云计算
+* [Openstack云计算平台搭建](https://github.com/yangwawa0323/documentation/blob/master/Openstack.md)
 
 
 
