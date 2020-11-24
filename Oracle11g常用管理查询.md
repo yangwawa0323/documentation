@@ -1,426 +1,1234 @@
-
-
 # Oracle应用和调优
 
-## Oracle 结构
+## Oracle PL/SQL 入门
 
-## 创建数据库
+关系型SQL
 
-## Oracle物理结构
+#### 表
 
-### 索引
+关系型数据库中的表存放的数据可以看待为行与列，其中还包括了表与表之间的关系，比如下图中描述了一个作者可以发布多篇文章的结构
 
-### 分区
+![image-20201121110226765](Oracle11g%E5%B8%B8%E7%94%A8%E7%AE%A1%E7%90%86%E6%9F%A5%E8%AF%A2.assets/image-20201121110226765.png)
 
-## 数据库用户管理
-
-### 账户管理
-
-用户管理的属性
-
-* 用户名
-* 验证方法
-* 默认表空间
+##### DDL (Data Definition Language)数据定义语言
 
 ```plsql
-ALTER DATABASE DEFAULT TABLESPACE tablespace_name ;
+CREATE TABLE <table_name> (
+	<column_name_1> <data_type_1>,
+	<column_name_2> <data_type_2>,
+	<column_name_N> <data_type_N> );
 ```
 
-* 表空间配额
+
+
+
+
+#### 索引
+
+索引为数据访问的核心快捷方式，假想一本没有目录的字典会是多么糟糕的事情，这正如同数据库的表没有索引。当你翻阅字典你只能从第一页开始将字典从头到尾的查看一遍，才能保证不错过信息。同样没有了索引的表中找数据，就得从第一行开始对比直到最后一行。这对大数据的表来说是件恐怖的事情。
 
 ```plsql
-SELECT tablespace_name, bytes, max_bytes FROM dba_ts_quotas
-WHERE username='john';
+CREATE [UNIQUE] INDEX <index_name>
+	on <table_name> (
+		<column_name_1>,
+		<column_name_2>,
+		<column_name_N> );
 ```
 
-![image-20200903013958386](./Oracle11g常用管理查询.assets/image-20200903013958386.png)s
 
-* 临时表空间
+
+#### 约束
+
+##### 列的约束
+
+* NULL
+* NOT NULL
+
+##### 表的约束
+
+* 唯一索引的约束
+
+  正如其名一样，此约束了表中的数据要遵循唯一的特性
 
 ```plsql
-ALTER USER username TEMPORARY TABLESPACE tablespace_name;
+ALTER TABLE authors ADD
+CONSTRAINT authors_uk1
+UNIQUE (
+ name,
+ birth_date,
+ gender );
 ```
 
-> 无需对用户的临时表空间配额
+* 主键的约束
 
-* 用户配置模版
-
-  	![Description of create_profile.gif follows](Oracle11g%E5%B8%B8%E7%94%A8%E7%AE%A1%E7%90%86%E6%9F%A5%E8%AF%A2.assets/create_profile.gif)
-
-  [详细请参考](https://docs.oracle.com/cd/E11882_01/server.112/e41084/statements_6010.htm#SQLRF01310)
-
-  以下是两个Profile范例
+  它和唯一索引的约束非常接近，不过它还不允许`NULL`数据的插入
 
 ```plsql
-  CREATE PROFILE app_user LIMIT 
-     SESSIONS_PER_USER          UNLIMITED 
-     CPU_PER_SESSION            UNLIMITED 
-     CPU_PER_CALL               3000 
-     CONNECT_TIME               45 
-     LOGICAL_READS_PER_SESSION  DEFAULT 
-     LOGICAL_READS_PER_CALL     1000 
-     PRIVATE_SGA                15K
-     COMPOSITE_LIMIT            5000000; 
+ALTER TABLE <table_name> ADD
+CONSTRAINT <constraint_name>
+PRIMARY KEY (
+	<column_name_1>,
+	<column_name_2>,...
+	<column_name_N> );
+```
+
+> 如果想查找出主键的信息，可以查询 `all_constraints`以及`all_cons_columns`表中的信息。
+
+```plsql
+SELECT cols.table_name, cols.column_name, cols.position, cons.status, cons.owner
+FROM all_constraints cons, all_cons_columns cols
+WHERE cons.constraint_type = 'P'
+AND cons.constraint_name = cols.constraint_name
+AND cons.owner = cols.owner
+AND cons.owner = 'HR'
+ORDER BY cols.table_name, cols.position;
+```
+
+* 外键的约束
+
+  此约束决定了，表的数据的由来一定是来自于参照的表
+
+  1. 从表不能添加主表不存在的数据
+
+  2. 主表删除数据时，如果从表已经关联了此条数据将不让删除，必须先处理从表的记录，方能删除主表对应的信息
+
      
-  CREATE PROFILE app_user2 LIMIT
-     FAILED_LOGIN_ATTEMPTS 5
-     PASSWORD_LIFE_TIME 60
-     PASSWORD_REUSE_TIME 60
-     PASSWORD_REUSE_MAX 5
-     PASSWORD_VERIFY_FUNCTION verify_function
-     PASSWORD_LOCK_TIME 1/24
-     PASSWORD_GRACE_TIME 10;        
-```
-
-  
-
-  
-
-* 账户状态
-
-  ![Description of create_user.gif follows](Oracle11g%E5%B8%B8%E7%94%A8%E7%AE%A1%E7%90%86%E6%9F%A5%E8%AF%A2.assets/create_user.gif)
-
-  
-
-![image-20200903014018395](./Oracle11g常用管理查询.assets/image-20200903014018395.png)
-
-
-
-* 账户状态
-
-  * OPEN
-
-  * LOCKED
-
-  * EXPIRED
-
-  * EXPIRED & LOCKED
-
-  * EXPIRED(GRACE)
-
-  * LOCKED(TIMED)
-
-  * EXPIRED & LOCKED(TIMED)
-
-  * EXPIRED(GRACE) & LOCKED
-
-  * EXPIRED(GRACE) & LOCKED(TIMED)
-
-    + 修改用户锁定状态
 
 ```plsql
-    ALTER USER username ACCOUNT LOCK ;
-    ALTER USER username ACCOUNT UNLOCK ;
+ALTER TABLE <table_name> ADD
+CONSTRAINT <constraint_name>
+FOREIGN KEY (
+	<column_name_1>,
+	<column_name_2>,...
+	<column_name_N> )
+REFERENCES <referenced_table_name> (
+	<column_name_1>,
+	<column_name_2>,...
+	<column_name_N> );
 ```
 
-    * 修改用户密码状态
+
+
+#### 触发器
+
+触发器是一种表操作事件的响应的PL/SQL语句，根据定义在表上产生 `BEFORE`,`AFTER`,`INSTEAD OF`,`UPDATE`,`DELETE`操作事件时触发执行。
+
+![触发器事件表](Oracle11g%E5%B8%B8%E7%94%A8%E7%AE%A1%E7%90%86%E6%9F%A5%E8%AF%A2.assets/image-20201121113319414.png)
 
 ```plsql
-    ALTER USER username PASSWORD EXPIRE;
+CREATE [OR REPLACE] TRIGGER <trigger_name>
+BEFORE INSERT ON <table_name>
+FOR EACH ROW
+BEGIN
+<pl/sql>
+END;
 ```
 
-    > 这里没有`unexpire`的设置，只有通过重置密码的唯一方法
-
-* 创建账户并分配其使用的表空间示例
+下面的范例对数据做检测，当插入到`authors`表中的数据(们)，如果为大写`JONATHAN GENNICK`将弹出一个错误信息
 
 ```plsql
-create user scott identified by tiger
-default tablespace users temporary tablespace temp
-quota 100m on users, quota unlimited on example
-profile developer_profile
-password expire
-account unlock;
+SQL> CREATE OR REPLACE TRIGGER authors_bir
+	BEFORE INSERT ON authors
+ FOR EACH ROW
+
+ BEGIN
+ if upper(:new.name) = 'JONATHAN GENNICK' then
+ 	raise_application_error(20000, 'Sorry, that genius is not allowed.');
+ end if;
+ END;
+ /
 ```
 
-* 启用操作系统用户和密码验证时角色的二选一
+
+
+#### 视图
+
+视图代表着通过 SQL 查询的结果，而且支持`INSERT`，`UPDATE`, `DELETE`和`SELECT`的操作。一般用于以下几个场景
+
+* 转换多个表的查询数据为单一的表
+* 当单条的`SELECT`语句无法使用嵌套式的 JOIN 语句时
+* 可以实现用户级安全，封装显示特定的列的数据
 
 ```plsql
-GRANT [sysdba | sysoper ] TO username ;
-
-CONNECT username / password [@db_alias] AS [ SYSOPER | SYSDBA ] ;
-
-CONNECT / AS [ SYSOPER | SYSDBA ] ;
+CREATE OR REPLACE VIEW authors_publications as
+SELECT authors.id,
+	authors.name,
+	author_publications.title,
+	author_publications.written_date
+FROM authors,
+	author_publications
+WHERE authors.id = author_publications.author_id;
 ```
 
-* 修改账户示例
 
-  * 修改密码
+
+#### 插入数据
+
+1. 插入数据有口头提供的值的形式
 
 ```plsql
-    alter user scott identified by lion;
+INSERT INTO <table_name> (
+	<column_name_1>,
+	<column_name_2>, ...
+	<column_name_N> )
+VALUES (
+	<column_value_1>,
+	<column_value_2>,...
+	<column_value_N> );
 ```
 
-  * 修改默认表空间和临时表空间:
+2. 插入由`select`语句筛选出来数据
 
 ```plsql
-    alter user scott default tablespace store_data temporary tablespace temp;
+INSERT INTO <table_name> (
+   	<column_name_1>,
+   	<column_name_2>, ...
+   	<column_name_N> )
+   SELECT <column_value_1>,
+   	<column_value_2>,...
+   	<column_value_N>
+   FROM <from_table_name> ...;
 ```
 
-  * 修改配额:
+   > 另外可以使用 `where not exists`
 
 ```plsql
-    alter user scott quota unlimited on store_data, quota 0 on users;
+   SQL> INSERT INTO authors (
+   	id,
+   	name,
+   	birth_date,
+   	gender )
+   SELECT 300,
+   	'Hugh Darwen',
+   	to_date('19430101', 'YYYYMMDD')09 'MALE'
+   FROM dual d
+   WHERE not exists (
+   SELECT 1
+   	FROM authors x
+   	WHERE x.id = 300 );
+   
+   COMMIT;
 ```
 
-  * 修改配置模版:
+​    
+
+#### 更新数据
+
+更新数据可以使用子查询的模式，通过子查询的结果来提供要更新的数据
+
+1. 更新单个列的值
 
 ```plsql
-    alter user scott profile prod_profile;
+UPDATE <table_name> U
+SET U.<column_name_N> = (
+	SELECT S.<subquery_column_name_N>
+	FROM <subquery_table_name> S
+	WHERE S.<column_name_N> = U.<column_name_N>
+	AND ...)
+WHERE u.<column_name_N> = <some_value>...;
 ```
 
-  * 强制用户修改密码:
+2. 更新多列对应于子查询结果的相同列的值
 
 ```plsql
-    alter user scott password expire;
+UPDATE <table_name> U
+SET (U.<column_name_1>,
+	U.<column_name_2>, ...
+	U.<column_name_N> ) = (
+		SELECT S.<subquery_column_name_1>,
+			S.<subquery_column_name_2>, ...
+			S.<subquery_column_name_N>
+		FROM <subquery_table_name> S
+		WHERE S.<column_name_N> = U.<column_name_N>
+		AND ...)
+WHERE u.<column_name_N> = <some_value>...;
 ```
 
-  * 锁定账户
+
+
+#### 删除数据
+
+语法
 
 ```plsql
-    alter user scott account lock;
+DELETE FROM <table_name>
+WHERE <column_name_N> = <column_value_N>...;
 ```
 
-  * 删除账户
+#### 筛选数据
+
+关系型数据库最强大的部分就是对数据的挖掘，将数据从定义的语句中查询出来。
 
 ```plsql
-    drop user scott;
-    drop user scott cascade;
+SELECT <column_name_1>,
+	<column_name_2>,
+	<column_name_N>
+FROM <table_name>
+[ORDER BY <order_by_column_name_N>]
 ```
+
+##### JOIN 查询
+
+1. 传统的在 `WHERE` 语句中连接
+
+```plsql
+SELECT a.id,
+	a.name,
+	p.title,
+	p.written_date
+FROM authors a,
+	author_publications p
+WHERE a.id = p.author_id
+ORDER BY a.name,
+	p.written_date,
+	p.title;
+```
+
+2. ANSI 标准的在 `FROM`中`JOIN`
+
+```plsql
+SELECT a.id,
+	a.name,
+	p.title,
+	p.written_date
+FROM authors a JOIN
+	author_publications p
+ON a.id = p.author_id
+ORDER BY a.name,
+	p.written_date,
+	p.title;
+```
+
+
+
+##### top-N 查询
+
+12c 以后的版本给我引入了雷同于MySQL中的 LIMIT 语句
+
+```plsql
+SELECT * FROM <table_name>
+[ OFFSET offset { ROW | ROWS } ]
+[ FETCH { FIRST | NEXT } [ { rowcount | percent PERCENT } ]
+    { ROW | ROWS } { ONLY | WITH TIES } ]
+```
+
+```plsql
+SQL> select * from hr.employees 
+     order by employee_id asc 
+     offset 120000 rows 
+     FETCH FIRST 5 rows ONLY;
+```
+
 ------
 
-## 加载数据
+### 代码块
 
-## 数据库监控
+作为 SQL的扩展，Oracle定义了PL/SQL，其中就包括了代码块。执行代码块中的代码，就如同`Java`，`PHP`,`Javascript`的 `try...catch`, `Python`中的`try...except`一样。
 
-### 监控数据的修改
+它有着四个关键字
 
-### 监控安全
+* **DECLEAR**: 每一个PL/SQL都有一个`DECLEAR`段，用来分配游标的内存，数据类型的定义，变量，以及内嵌的函数等
 
-### 监控备份
+* **BEGIN**： PL/SQL逻辑的开始
 
-### 监控数据文件的增长
+* **EXCEPTION**： 用来捕获 PL/SQL 的错误，即使你没有使用对异常的处理的定义，它依然存在
 
-### 监控性能
+* **END**
 
-## 备份
+#### 匿名的代码段
 
-### 备份的类型
-
-#### 全库备份 VS 部分备份
-
-#### Level 0 备份 VS Level 1 备份
-
-#### 物理备份 VS 逻辑备份
-
-#### 热备份 VS 冷备份
-
-#### Oralce管理的备份 VS 用户管理的备份
-
-#### 物理备份演示
-
-#### 逻辑备份演示
-
-### RMAN 备份
-
-* 查看备份集信息
+如果你仅仅想执行代码，而不想它保存到数据库中就可以使用这种没有名字的代码段。
 
 ```plsql
-SET LINES 132 PAGESIZE 100
-BREAK ON REPORT ON bs_key ON completion_time ON bp_name ON file_name
-COL bs_key FORM 99999 HEAD "BS Key"
-COL bp_name FORM a40 HEAD "BP Name"
-COL file_name FORM a40 HEAD "Datafile"
---
-SELECT
-s.recid bs_key
-,TRUNC(s.completion_time) completion_time
-,p.handle bp_name
-,f.name file_name
-FROM v$backup_set s
-,v$backup_piece p
-,v$backup_datafile d
-,v$datafile f
-WHERE p.set_stamp = s.set_stamp
-AND p.set_count = s.set_count
-AND d.set_stamp = s.set_stamp
-AND d.set_count = s.set_count
-AND d.file# = f.file#
-ORDER BY
-s.recid
-,p.handle
-,f.name;
+-- This is an anonymous procedure, so it has no name
+DECLARE
+/*
+You declare local cursors, variables, and methods here,
+but you don't need to have a declaration section.
+*/
+BEGIN
+-- You write your executable code here
+NULL; -- Ahhh, you've got to have at least one command!
+EXCEPTION
+when NO_DATA_FOUND then
+	raise_application_error(-20000,
+'Hey, This is in the exception-handling section!');
+END;
+/
+-- the forward slash on a line by itself says execute this procedure
+```
+
+> `BEGIN`之后至少有一条语句，即使`NULL`也好。
+
+```plsql
+set serveroutput on size 1000000
+begin
+	SYS.DBMS_OUTPUT.put_line('Hi there genius!');
+end;
+/
 ```
 
 ------
 
 
 
-## 数据恢复
+### 异常
 
-### 数据恢复的类型
+数据中出现异常，数据库将抛出异常不会执行后续代码，我们需要接管异常。PL/SQL定义了约莫 20 个异常。我们平时只会用到几个常见异常
 
-#### 数据还原 VS 数据恢复
+* **NO_DATA_FOUND**: 用于`SELECT`语句中查询不到任何记录
 
-#### 完整恢复 VS 部分恢复
+* **TOO_MANY_ROWS**: 如果在`INSERT...SELECT`中期待的一行数据但实际获取到多行
 
-#### 传统模式 VS 数据闪回
-
-#### 物理恢复 VS 逻辑恢复
-
-### 闪回技术
-
-#### 查询闪回
-
-#### 版本闪回
-
-#### 数据表闪回
-
-#### 误删闪回
-
-#### 数据归档闪回
-
-#### 数据库闪回
-
-### LogMiner
-
-
-
-------
-
-## Oracle 11g 常用管理查询语句
-
-
-
-### Linux 下环境变量设置
-
-```shell
-$ export ORACLE_HOME=/orahome/app/oracle/product/12.1.0.1/db_1
-$ export ORACLE_SID=O12C
-$ export LD_LIBRARY_PATH=/usr/lib:$ORACLE_HOME/lib
-$ export PATH=$ORACLE_HOME/bin:$PATH  
-```
-
-默认Oracle数据搜索查询中区分字符的大小写，可以建立会话后设定两个变量
-
-```plsql
-SQL> ALTER SESSION SET NLS_COMP=LINGUISTIC;
-SQL> ALTER SESSION SET NLS_SORT = BINARY_CI;
-
-SQL> set sqlprompt "_user'@'_connect_identifier>"
-SYSTEM@orcl11g>
-```
-
-
-
-### 侦听实例状态
-
-可以使用 `lsnrctl status` 查看实例启动状态
-
-```shell
-C:\Users\yangwawa>lsnrctl status
-
-LSNRCTL for 64-bit Windows: Version 11.2.0.1.0 - Production on 02-SEP-2020 19:10:25
-
-Copyright (c) 1991, 2010, Oracle.  All rights reserved.
-
-Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=IPC)(KEY=EXTPROC1521)))
-STATUS of the LISTENER
-------------------------
-Alias                     LISTENER
-Version                   TNSLSNR for 64-bit Windows: Version 11.2.0.1.0 - Production
-Start Date                29-AUG-2020 23:23:57
-Uptime                    3 days 19 hr. 46 min. 27 sec
-Trace Level               off
-Security                  ON: Local OS Authentication
-SNMP                      OFF
-Listener Parameter File   E:\app\yangwawa\product\11.2.0\dbhome_1\network\admin\listener.ora
-Listener Log File         e:\app\yangwawa\diag\tnslsnr\DESKTOP-08E761I\listener\alert\log.xml
-Listening Endpoints Summary...
-  (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(PIPENAME=\\.\pipe\EXTPROC1521ipc)))
-  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=127.0.0.1)(PORT=1521)))
-Services Summary...
-Service "orcl" has 1 instance(s).
-  Instance "orcl", status READY, has 1 handler(s) for this service...
-Service "orclXDB" has 1 instance(s).
-  Instance "orcl", status READY, has 1 handler(s) for this service...
-Service "rcat" has 1 instance(s).
-  Instance "rcat", status READY, has 1 handler(s) for this service...
-Service "rcatXDB" has 1 instance(s).
-  Instance "rcat", status READY, has 1 handler(s) for this service...
-The command completed successfully
-```
-
-* 也可以交互式查询
-
-```shell
-C:\Users\yangwawa>lsnrctl
-
-LSNRCTL for 64-bit Windows: Version 11.2.0.1.0 - Production on 02-SEP-2020 19:11:35
-
-Copyright (c) 1991, 2010, Oracle.  All rights reserved.
-
-Welcome to LSNRCTL, type "help" for information.
-
-LSNRCTL> services listener
-Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=IPC)(KEY=EXTPROC1521)))
-Services Summary...
-Service "orcl" has 1 instance(s).
-  Instance "orcl", status READY, has 1 handler(s) for this service...
-    Handler(s):
-      "DEDICATED" established:3344 refused:0 state:ready
-         LOCAL SERVER
-Service "orclXDB" has 1 instance(s).
-  Instance "orcl", status READY, has 1 handler(s) for this service...
-    Handler(s):
-      "D000" established:0 refused:0 current:0 max:1022 state:ready
-         DISPATCHER <machine: DESKTOP-08E761I, pid: 7112>
-         (ADDRESS=(PROTOCOL=tcp)(HOST=DESKTOP-08E761I)(PORT=50731))
-Service "rcat" has 1 instance(s).
-  Instance "rcat", status READY, has 1 handler(s) for this service...
-    Handler(s):
-      "DEDICATED" established:0 refused:0 state:ready
-         LOCAL SERVER
-Service "rcatXDB" has 1 instance(s).
-  Instance "rcat", status READY, has 1 handler(s) for this service...
-    Handler(s):
-      "D000" established:0 refused:0 current:0 max:1022 state:ready
-         DISPATCHER <machine: DESKTOP-08E761I, pid: 10752>
-         (ADDRESS=(PROTOCOL=tcp)(HOST=DESKTOP-08E761I)(PORT=56243))
-The command completed successfully
-```
-
-* 使用自带工具管理 **Oracle Net Manager** 
-
-![image-20200902191509711](./Oracle11g常用管理查询.assets/image-20200902191509711.png)
-
-
-
-* 建立数据库链接
-
-  如果需要在不同的数据库之间查询数据，可以在当前实例中建立其他实例的数据库链接
+* **OTHERS**：泛指没有接管的异常
 
   
 
-![Description of create_database_link.gif follows](https://docs.oracle.com/cd/E11882_01/server.112/e41084/img/create_database_link.gif)
+### 函数
 
-
+函数也是一种代码块，它返回(仅仅)一个值。
 
 ```plsql
- SQL>　CREATE DATABASE LINK orclInst
- 2  　　CONNECT TO hr IDENTIFIED BY redhat USING 'orcl';
- SQL> DESC user_tables@orclInst;
+n_value := to_number('123.45')
 ```
 
-> 建立链接之后在查询表后添加 `@linkname`  , 设置可以通过其他数据库的结构建表以及插入数据
->
+#### 创建函数
+
 ```plsql
-SQL> CREATE TABLE orcl_user_tables AS SELECT * FROM user_tables@orclInst;
-SQL> INSERT INTO orcl_user_tables AS SELECT * FROM user_tables@orclInst;
+CREATE [OR REPLACE] FUNCTION <function_name> [(
+	<parameter_name_1> [IN] [OUT] <parameter_data_type_1>,
+	<parameter_name_2> [IN] [OUT] <parameter_data_type_2>,...
+	<parameter_name_N> [IN] [OUT] <parameter_data_type_N> )]
+RETURN <return_data_type> IS
+--the declaration section
+BEGIN
+-- the executable section
+	return <return_data_type>;
+EXCEPTION
+-- the exception-handling section
+END;
+/
+```
+
+范例
+
+```plsql
+CREATE OR REPLACE FUNCTION to_number_or_null (
+aiv_number IN varchar2 )
+return number is
+/*
+to_number_or_null.fun
+by Donald J. Bales on 2014-10-20
+An errorless to_number( ) method
+*/
+begin
+	return to_number(aiv_number);
+exception
+	when OTHERS then
+	return NULL;
+end to_number_or_null;
+/
+@fe.sql to_number_or_null;
 ```
 
 
 
-### 逻辑结构和物理结构
+### 存储过程
+
+存储过程除了不会返回值，其他和函数相差无异。
+
+```plsql
+CREATE [OR REPLACE] PROCEDURE <procedure_name> [(
+<parameter_name_1> [IN] [OUT] <parameter_data_type_1>,
+<parameter_name_2> [IN] [OUT] <parameter_data_type_2>,...
+<parameter_name_N> [IN] [OUT] <parameter_data_type_N> )] IS
+--the declaration section
+BEGIN
+-- the executable section
+EXCEPTION
+-- the exception-handling section
+END;
+/
+```
+
+范例
+
+```plsql
+CREATE OR REPLACE PROCEDURE wait(
+ain_seconds IN number) is
+/*
+wait.prc
+by Donald J. Bales on 2014-10-20
+Wrapper for SYS.DBMS_LOCK.sleep()
+*/
+begin
+	SYS.DBMS_LOCK.sleep(ain_seconds);
+end wait;
+/
+@pe.sql wait
+```
+
+> 存储过程的调用，如果在代码块中使用，直接使用存储过程名字即可，如果单独执行则通过 `EXECUTE <procedure_name>` 语句
+
+------
+
+### 包
+
+前面我们学会了单个函数和存储的定义，接下来我们将使用包来组织和管理相关的函数和存储过程。可以看待为PL/SQL**库**。
+
+它包括了两部分：
+
+* 包的定义
+* 包的 Body
+
+#### 创建一个包
+
+首先创建一个包的定义，其中包括常量，游标，函数，存储过程，或者变量的声明，其中没有逻辑代码，逻辑代码则交给包的`body`来具体实现。
+
+其语法
+
+```plsql
+CREATE [OR REPLACE] PACKAGE <package_name> AS
+-- one or more: constant, cursor, function, procedure, or variable declarations
+END <package_name>;
+```
+
+范例
+
+```plsql
+create or replace package NUMBER_ as
+/*
+number_.pks
+by Donald J. Bales on 2014-10-20
+A utility package for the data type NUMBER
+*/
+/*
+Returns the passed varchar2 as a number if it represents a number,
+otherwise, it returns NULL
+*/
+FUNCTION to_number_or_null (
+	aiv_number in varchar2 )
+return number;
+end NUMBER_;
+/
+@se.sql
+```
+
+#### 创建包体
+
+```plsql
+CREATE [OR REPLACE] PACKAGE BODY <package_name> AS
+-- one or more constant, cursor, or variable declarations
+-- one or more function, or procedure implementations
+[BEGIN]
+-- you can code a PL/SQL block called an initialization section that is
+-- executed only once per session, when the package is first instantiated
+-- into memory
+[EXCEPTION]
+-- you can code an exception-handling section for the initialization section
+END <package_name>;
+```
+
+让我们完成上面`NUMBER_`包的包体定义
+
+```plsql
+create or replace package body NUMBER_ as
+/*
+number_.pkb
+by Donald J. Bales on 2014-10-20
+A utility package for the data type NUMBER
+*/
+	FUNCTION to_number_or_null (
+		aiv_number in varchar2 )
+	return number is
+	begin
+		return to_number(aiv_number);
+	exception
+		when OTHERS then
+			return NULL;
+	end to_number_or_null;
+end NUMBER_;
+/
+@be.sql
+```
+
+最后我们总结下使用包最大的好处
+
+ *  函数和存储过程的名字不用冲突，因为调用时`package1.function1`和`package2.function1`将不会冲突，不会因为 `CREATE OR REPLACE FUNCTION `将先前别的相同函数定义的给覆盖替换了 
+
+    
+
+-------
+
+
+
+### 类型
+
+DDL语言中的类型同样可以使用在PL/SQL中，比如`VARCHAR2`,`NUMBER`,`DATE`。PL/SQL同样还有着 **BOOLEAN**, `TRUE`和`FALSE`类型
+
+
+
+### 变量
+
+
+
+------
+
+
+
+### 单行数据处理
+
+初学者，一开始使用较慢的方法，一次插入一行，一次更新一行。下面的例子中将处理单行的数据
+
+
+
+#### 插入
+
+```plsql
+rem insert.sql
+rem by Donald J. Bales on 2014-10-20
+rem An anonymous PL/SQL procedure to insert
+rem values using PL/SQL literals and variables
+set serveroutput on size 1000000;
+declare
+-- I declared these variables so I can get
+-- the required ID values before I insert.
+	n_id WORKERS.id%TYPE;
+	n_worker_type_id WORKERS.worker_type_id%TYPE;
+	v_external_id WORKERS.external_id%TYPE;
+	n_gender_type_id WORKERS.gender_type_id%TYPE;
+-- I'll use this variable to hold the result
+-- of the SQL insert statement.
+	n_count number;
+begin
+-- First, let's get the WORKER_TYPES id for a contractor
+	begin
+		select id
+		into n_worker_type_id
+		from WORKER_TYPES
+		where code = 'C';
+	exception
+		when OTHERS then
+			raise_application_error(-20002, SQLERRM||
+			' on select WORKER_TYPES'||
+			' in filename insert.sql');
+	end;
+-- Next, let's get the GENDER_TYPES id for a male
+	begin
+		select id
+		into n_gender_type_id
+		from GENDER_TYPES
+		where code = 'M';
+	exception
+		when OTHERS then
+			raise_application_error(-20004, SQLERRM||
+			' on select GENDER_TYPES'||
+			' in filename insert.sql');
+	end;
+-- Now, let's get the next WORKERS id sequence
+	begin
+		select WORKERS_ID.nextval
+		into n_id
+		from SYS.DUAL;
+	exception
+		when OTHERS then
+			raise_application_error(-20001, SQLERRM||
+			' on select WORKERS_ID.nextval'||
+			' in filename insert.sql');
+	end;
+-- And then, let's get the next external_id sequence
+	begin
+		select lpad(to_char(EXTERNAL_ID_SEQ.nextval), 9, '0')
+		into v_external_id
+		from SYS.DUAL;
+	exception
+		when OTHERS then
+			raise_application_error(-20003, SQLERRM||
+			' on select EXTERNAL_ID_SEQ.nextval'||
+		' in filename insert.sql');
+	end;
+-- Now that we have all the necessary ID values
+-- we can finally insert a row!
+	begin
+		insert into WORKERS (
+			id,
+			worker_type_id,
+			external_id,
+			first_name,
+			middle_name,
+			last_name,
+			name,
+			birth_date,
+			gender_type_id )
+		values (
+			n_id, -- a variable
+			n_worker_type_id, -- a variable
+			v_external_id, -- a variable
+			'JOHN', -- a literal
+			'J.', -- a literal
+			'DOE', -- a literal
+			'DOE, JOHN J.', -- a literal
+			to_date('19800101', 'YYYYMMDD'), -- a function
+			n_gender_type_id ); -- a variable
+
+		n_count := sql%rowcount;
+	exception
+		when OTHERS then
+			raise_application_error(-20005, SQLERRM||
+			' on insert WORKERS'||
+			' in filename insert.sql');
+	end;
+
+pl(to_char(n_count)||' row(s) inserted.');
+end;
+/
+commit;
+```
+
+> 如果以上脚本反复执行，有可能会因为主键或者唯一所以重复而冲突报错。最好是捕捉 `DUP_VAL_ON_INDEX`异常
+
+插入的语法
+
+```plsql
+INSERT INTO <table_name> (
+<column_name_1>,
+<column_name_2>,...
+<column_name_N> )
+VALUES (
+<column_value_1>,
+<column_value_2>,...
+<column_value_N> );
+```
+
+
+
+##### DUP_VAL_INDEX 异常的处理
+
+```plsql
+-- Now that we have all the necessary ID values
+-- we can finally insert a row!
+begin
+	insert into WORKERS (
+		id,
+		worker_type_id,
+		external_id,
+		first_name,
+		middle_name,
+		last_name,
+		name,
+		birth_date,
+		gender_type_id )
+	values (
+		n_id, -- a variable
+		n_worker_type_id, -- a variable
+		v_external_id, -- a variable
+		'JOHN', -- a literal
+		'J.', -- a literal
+		'DOE', -- a literal
+		'DOE, JOHN J.', -- a literal
+		to_date('19800101', 'YYYYMMDD'), -- a function
+		n_gender_type_id ); -- a variable
+	n_count := sql%rowcount;
+exception
+	when DUP_VAL_ON_INDEX then
+		n_count := 0;
+		pl('Caught a DUP_VAL_ON_INDEX exception');
+	when OTHERS then
+		raise_application_error(-20005, SQLERRM||
+		' on insert WORKERS'||
+		' in filename insert_with_handled_exception.sql');
+end;
+/
+```
+
+##### 使用 SQL 语句提前检测重复
+
+先行使用 `WHERE`中的`EXISTS`方法检测数据是否存在，不存在再插入
+
+```plsql
+rem insert_the_doe_family.sql
+rem by Donald J. Bales on 2014-10-20
+rem An anonymous PL/SQL procedure to insert
+rem values using PL/SQL literals and variables
+set serveroutput on size 1000000;
+declare
+-- I'll use this variable to hold the result
+-- of the SQL insert statement.
+n_count number := 0;
+-- I've declared this local (or embedded) function to
+-- do the actual work of inserting values. It uses
+-- SQL detection to prevent DUP_VAL_ON_INDEX exceptions.
+FUNCTION add_worker(
+aiv_first_name WORKERS.first_name%TYPE,
+aiv_middle_name WORKERS.middle_name%TYPE,
+aiv_last_name WORKERS.last_name%TYPE,
+aid_birth_date WORKERS.birth_date%TYPE,
+aiv_gender_code GENDER_TYPES.code%TYPE,
+aiv_worker_type_code WORKER_TYPES.code%TYPE)
+return number is
+	v_name WORKERS.name%TYPE;
+begin
+	v_name := rtrim(aiv_last_name||', '||aiv_first_name||' '||aiv_middle_name);
+-- Now I can just let SQL do all the work. Who needs PL/SQL!
+	begin
+		insert into WORKERS (
+			id,
+			worker_type_id,
+			external_id,
+			first_name,
+			middle_name,
+			last_name,
+			name,
+			birth_date,
+			gender_type_id )
+		select WORKERS_ID.nextval,
+			c1.id,
+			lpad(to_char(EXTERNAL_ID_SEQ.nextval), 9, '0'),
+			aiv_first_name,
+			aiv_middle_name,
+			aiv_last_name,
+			v_name,
+			aid_birth_date,
+			c2.id
+		from WORKER_TYPES c1,
+			GENDER_TYPES c2
+		where c1.code = aiv_worker_type_code
+			and c2.code = aiv_gender_code
+			and not exists (
+				select 1
+				from WORKERS x
+				where x.name = v_name
+				and x.birth_date = aid_birth_date
+				and x.gender_type_id = c2.id );
+		return sql%rowcount;
+	exception
+	when OTHERS then
+		raise_application_error(-20001, SQLERRM||
+		' on insert WORKERS'||
+		' in add_worker');
+	end;
+end add_worker;
+
+begin
+-- All I have to do now, is call the add_worker function
+-- four times with each Doe family member's values.
+	n_count := n_count + add_worker('JOHN', 'J.', 'DOE', to_date('19800101', 'YYYYMMDD'), 'M', 'C');
+	n_count := n_count + add_worker('JANE', 'J.', 'DOE', to_date('19800101', 'YYYYMMDD'), 'F', 'E');
+	n_count := n_count + add_worker('JOHNNY', 'E.', 'DOE', to_date('19980101', 'YYYYMMDD'), 'M', 'E');
+	n_count := n_count + add_worker('JANIE', 'E.', 'DOE', to_date('19980101', 'YYYYMMDD'), 'F', 'E');
+	pl(to_char(n_count)||' row(s) inserted.');
+end;
+/
+commit;
+```
+
+上面的PL/SQL 插入时使用的技巧就是将要插入的数据先行从表中筛选一次，接着使用 `INSERT...SELECT...FROM`语句中的`WHERE`条件`NOT EXISTS`判断是否存在，不存在自然插入新数据，其语法：
+
+```plsql
+INSERT INTO <insert_table_name> (
+	<column_name_1>,
+	<column_name_2>,...
+	<column_name_N> )
+SELECT <column_name_or_value_1>,
+	<column_name_or_value_2>,...
+	<column_name_or_value_N>
+FROM <select_table_name_1> <select_table_alias_1>,
+	<select_table_name_2> <select_table_alias_2>,...
+	<select_table_name_N> <select_table_alias_N>
+WHERE <where _clause>;
+```
+
+
+
+#### 更新一行数据
+
+```plsql
+begin
+	update WORKERS
+	set worker_type_id = n_worker_type_id
+	where id = n_id;
+	n_updated := sql%rowcount;
+exception
+	when OTHERS then
+		raise_application_error(-20007, SQLERRM||
+		' on update WORKERS'||
+		' in filename insert_with_plsql_detection_for_update.sql');
+end;
+```
+
+更新的语法：
+
+```plsql
+UPDATE <table_name>
+SET <column_name_1> = <column_value_1>,
+	<column_name_2> = <column_value_2>,...
+	<column_name_N> = <column_value_N>
+WHERE <where_clause>;
+```
+
+
+
+##### 使用 SQL 子查询执行一个较为复杂的更新
+
+```plsql
+update WORKERS u
+set ( u.worker_type_id, u.gender_type_id ) = (
+	select c1.id, c2.id
+	from WORKER_TYPES c1,
+		GENDER_TYPES c2
+	where c1.code = decode(instr(u.first_name, 'JOHN'), 0, 'E', 'C')
+		and c2.code = decode(instr(u.first_name, 'JOHN'), 0, 'F', 'M') )
+where u.last_name = 'DOE';
+```
+
+其语法：
+
+```plsql
+UPDATE <update_table_name>
+SET ( <update_column_name_1>, <update_column_name_2>,... <update_column_name_N> ) =
+(SELECT <select_column_name_1>, <select_column_name_2>,... <select_column_name_N>
+	FROM <select_table_name_1>,
+		<select_table_name_2>,...
+		<select_table_name_N>
+	WHERE <select_column_name_3> = <update_column_name_3>
+		AND <select_column_name_4> = <update_column_name_4>
+		AND <select_column_name_N> = <update_column_name_N> )
+WHERE <update_column_name_4> = ... ;
+```
+
+
+
+#### 删除
+
+```plsql
+rem delete.sql
+rem by Donald J. Bales on 2014-10-20
+rem An anonymous PL/SQL procedure to delete
+rem rows using PL/SQL literals and variables
+set serveroutput on size 1000000;
+declare
+-- I'll use this variable to hold the result
+-- of the SQL delete statement.
+	n_count number;
+	v_code GENDER_TYPES.code%TYPE := 'M';
+begin
+	begin
+		delete from WORKERS d
+		where d.name = 'DOE, JOHN J.' -- a literal
+			and d.birth_date = to_date('19800101', 'YYYYMMDD') -- a function
+			and d.gender_type_id = ( -- a sub-query
+		select c.id
+			from GENDER_TYPES c
+			where c.code = v_code ); -- a variable
+		n_count := sql%rowcount;
+	exception
+		when OTHERS then
+			raise_application_error(-20001, SQLERRM||
+			' on delete WORKERS'||
+			' in filename delete.sql');
+	end;
+	pl(to_char(n_count)||' row(s) deleted.');
+end;
+/
+commit;
+```
+
+### 筛选
+
+```plsql
+SELECT <column_name_1>,
+	<column_name_2>,...
+	<column_name_N>
+INTO <plsql_variable_1>,
+	<plsql_variable_2>,...
+	<plsql_variable_N>
+FROM <table_name_1>,
+	<table_name_2>,...
+	<table_name_N>
+WHERE <where_clause>... ;
+```
+
+#### NO_DATA_FOUND
+
+筛选不到数据，不会报错，但是依旧形成异常`NO_DATA_FOUND`。
+
+```plsql
+begin
+	select id
+	into n_id
+	from WORKERS
+	where name = v_name
+		and birth_date = d_birth_date
+		and gender_type_id = n_gender_type_id;
+exception
+	when NO_DATA_FOUND then
+		n_id := NULL; -- Is this really needed?
+	when OTHERS then
+		raise_application_error(-20003, SQLERRM||
+		' on select WORKERS'||
+		' in filename insert_with_plsql_detection_for_update.sql');
+end;
+```
+
+**sql%rowcount** 可以获得查询语句的行数
+
+```plsql
+begin
+	select id
+	into n_id
+	from WORKERS
+	where name = v_name
+		and birth_date = d_birth_date
+		and gender_type_id = n_gender_type_id;
+	n_selected := sql%rowcount;
+exception
+	when NO_DATA_FOUND then
+		n_selected := sql%rowcount;
+		pl('Caught raised exception NO_DATA_FOUND');
+	when OTHERS then
+		raise_application_error(-20002, SQLERRM||
+		' on select WORKERS'||
+		' in filename select_no_data_found.sql');
+end;
+```
+
+##### TOO_MANY_ROWS 
+
+以上的语句使用`SELECT`语句我们期待的仅仅一条记录，如果多于一条以上的被筛选出来，将产生`TOO_MANY_ROWS`异常,同样需要捕捉处理
+
+```plsql
+begin
+	select id
+	into n_id
+	from WORKERS;
+-- Let's comment the WHERE clause so I get all the rows
+-- where name = v_name
+-- and birth_date = d_birth_date
+-- and gender_type_id = n_gender_type_id;
+	n_selected := sql%rowcount;
+exception
+	when NO_DATA_FOUND then
+		n_selected := sql%rowcount;
+		pl('Caught raised exception NO_DATA_FOUND');
+	when TOO_MANY_ROWS then
+		n_selected := sql%rowcount;
+		pl('Caught raised exception TOO_MANY_ROWS');
+	when OTHERS then
+		raise_application_error(-20002, SQLERRM||
+		' on select WORKERS'||
+		' in filename select_too_many_rows.sql');
+end;
+```
+
+
+
+------
+
+### 多行数据处理
+
+#### 游标
+
+```plsql
+rem cursor_the_doe_family.sql
+rem by Donald J. Bales on 2014-10-20
+rem An anonymous PL/SQL procedure to select
+rem the first names for the Doe family from
+rem the Worker table.
+
+set serveroutput on size 1000000;
+declare
+	cursor c_workers(
+		aiv_last_name in WORKERS.last_name%TYPE) is
+	select first_name
+	from WORKERS
+	where last_name like aiv_last_name||'%'
+	order by id;
+v_first_name WORKERS.first_name%TYPE;
+begin
+	open c_workers('DOE');
+	loop
+		fetch c_workers into v_first_name;
+		if c_workers%notfound then
+			close c_workers;
+			exit;
+		end if;
+		pl(v_first_name);
+	end loop;
+end;
+/
+```
+
+首先是申明游标的语法
+
+```plsql
+CURSOR <cursor_name> [(
+	<parameter_name_1> [IN] <parameter_data_type_1>,
+	<parameter_name_2> [IN] <parameter_data_type_2>,...
+	<parameter_name_N> [IN] <parameter_data_type_N> )] IS
+	<select_statement>;
+```
+
+接着手工把一行行数据从游标中取出
+
+```plsql
+OPEN <cursor_name> [(
+<parameter_value_1,
+<parameter_value_2>,...
+<parameter_value_N> )];
+LOOP
+	-- loop until you manually EXIT;
+	FETCH <cursor_name> INTO
+		<variable_name_1>,
+		<variable_name_2>,...
+		<variable_name_N>;
+END LOOP;
+CLOSE <cursor_name>;
+EXIT;
+```
+
+##### 游标数据
+
+在获取游标的行数据时，你同样可以使用关键字`%ROWTYPE`,在`LOOP`语句中保存获取的行数据
+
+```plsql
+r_worker		c_worker%ROWTYPE;	
+```
+
+
+
+##### 自动获取游标的行数据
+
+```plsql
+rem cursor_for_loop_the_doe_family.sql
+rem by Donald J. Bales on 2014-10-20
+rem An anonymous PL/SQL procedure to select
+rem the first names for the Doe family from
+rem the Workers table.
+
+set serveroutput on size 1000000;
+declare
+	cursor c_workers(
+		aiv_last_name in WORKERS.last_name%TYPE) is
+	select first_name
+	from WORKERS
+	where last_name like aiv_last_name||'%'
+	order by id;
+begin
+	for r_worker in c_workers('DOE') loop
+		pl(r_worker.first_name);
+	end loop;
+end;
+/
+```
+
+通过 `for...in...`循环的方式获取游标的每一行数据
+
+```plsql
+FOR <record_name> IN <cursor_name> [(<cursor_parameters>)] LOOP
+	-- Put your PL/SQL to be executed for each row here
+END LOOP;
+```
+
+##### Bulk Collect
+
+`BULK COLLECT`用来减少事务处理的数量，而且 SQL 引擎用它提高你的PL/SQL 程序的执行效率和速度 。
+
+这个思路很简单。 每一次你从你的PL/SQL程序中执行 SQL 语句, PL/SQL 必须先传递SQL语句给 Oracle 数据库的 SQL 引擎。当 **SQL engine** 完成后再由它将结果返回给**PL/SQL引擎**。 如此反复的折腾很多次。
+从 Oracle 8 开始, 你可以使用`BULK COLLECT`语句减少 PL/SQL和SQL引擎之间传输的次数。 与其一次从 SQL 引擎获取一行的不便, 你可以一次获取大约 100 条到一个 PL/SQL 集合中，可以是定义的PL/SQL表或者数组类型。  
+
+```plsql
+rem cursor_bulk_collect_the_doe_family.sql
+rem by Donald J. Bales on 2014-10-20
+rem An anonymous PL/SQL procedure to select
+rem the first names for the Doe family from
+rem the Workers table.
+set serveroutput on size 1000000;
+declare
+	cursor c_workers(
+	aiv_last_name in WORKERS.last_name%TYPE) is
+	select first_name
+	from WORKERS
+	where last_name like aiv_last_name||'%'
+	order by id;
+
+TYPE c_worker_table is table of c_workers%ROWTYPE
+index by binary_integer;
+t_workers c_worker_table;
+begin
+	open c_workers('DOE');
+	loop
+		fetch c_workers bulk collect into t_workers limit 2;
+		exit when t_workers.count = 0;
+		for i in t_workers.first..t_workers.last loop
+			pl(t_workers(i).first_name);
+		end loop;
+	end loop;
+end;
+/
+```
+
+其语法
+
+```plsql
+FETCH <cursor_name> BULK COLLECT INTO <plsql_table_name> LIMIT <limit>;
+```
+
+BULK COLLECT游标将数据获取到`plsql_table_name`中，可以接着通过`FOR LOOP`获取行数据
+
+```plsql
+FOR <index> IN <from_index>..<through_index> LOOP
+-- Put your PL/SQL code to execute during the loop here.
+END LOOP
+```
+
+######  从 SELECT 语句中形成Bulk collect
+
+```plsql
+rem bulk_collect_the_doe_family.sql
+rem by Donald J. Bales on 2014-10-20
+rem An anonymous PL/SQL procedure to select
+rem the first names for the Doe family from
+rem the Workers table.
+set serveroutput on size 1000000;
+declare
+	TYPE worker_table is table of WORKERS.first_name%TYPE
+	index by binary_integer;
+	t_workers worker_table;	
+
+begin
+	select first_name
+	BULK COLLECT
+	into t_workers
+	from WORKERS
+	where last_name like 'DOE%'
+	order by id;
+	for i in t_workers.first..t_workers.last loop
+		pl(t_workers(i));
+	end loop;
+end;
+/
+```
+
+其语法：
+
+```plsql
+SELECT <column_list>
+BULK COLLECT
+INTO <plsql_table_name>
+FROM <table_name>
+WHERE <where_clause>
+ORDER BY <order_by_colunmn_list>;
+```
+
+
+
+------
+
+
+
+
+
+## Oracle 逻辑结构和物理结构
 
 ![image-20200902203739335](./Oracle11g常用管理查询.assets/image-20200902203739335.png)
 
@@ -718,7 +1526,7 @@ SQL> alter database drop logfile group <group #>;
 SQL> alter system switch logfile;
 ```
 >
-> - `ORA-01624` 报错，意味着日志分组需要做灾难恢复
+>- `ORA-01624` 报错，意味着日志分组需要做灾难恢复
 >
 ```plsql
 SQL> alter system checkpoint;
@@ -1033,9 +1841,9 @@ and t.tablespace_name = UPPER('&tablespace_name')
 order by 1,2,3,4,5;
 ```
 >
-> 可以先行查询下 *inv_data* 表空间下存放表是否有外键参考的数据，查看表空间下表的约束
+>可以先行查询下 *inv_data* 表空间下存放表是否有外键参考的数据，查看表空间下表的约束
 >
-> 确定数据无关重要性后，可以使用 `CASCADE` 递归式删除
+>确定数据无关重要性后，可以使用 `CASCADE` 递归式删除
 >
 ```plsql
 > SQL> drop tablespace inv_data including contents and data files cascade constraints;
@@ -1043,10 +1851,544 @@ order by 1,2,3,4,5;
 
 
 
+### 索引
+
+* 唯一索引 VS 非唯一索引
+
+```plsql
+SQL> CREATE UNIQUE INDEX employee_i1 ON employee(employee_ID)
+```
+
+* 联合索引
+
+  基于多个列的组合建立索引，索引列分先后，如果你只用单个列作为搜索的条件，那么==只有第一个索引列生效==。
+
+```plsql
+SQL> CREATE INDEX automobile_i1 ON automobile(state, color)
+SQL> SELECT * FROM automobile WHERE state = 'CA';
+SQL> SELECT * FROM automobile WHERE color = 'RED';
+```
+
+> 注意：第三行的查询（最后的查询）不会使用到索引，此查询依旧使用全表搜索模式。因为它==不是放在最前的索引列==。
+
+* 函数索引
+
+```plsql
+SQL> CREATE INDEX employee_i3 ON (salary + bonus)
+```
 
 
+* 索引结构
+
+  ![image-20201122205648679](Oracle11g%E5%B8%B8%E7%94%A8%E7%AE%A1%E7%90%86%E6%9F%A5%E8%AF%A2.assets/image-20201122205648679.png)
+
+### 分区
+
+对于基于两张表的`JOIN` 操作可以实现数据平行处理。
+Oracle可以实现join操作的同时，每一个表分区加入到相关联的其他表，其结果被缓存。这种技术适合于当你处理大数据的时候; 它需要更多的计算资源，但是它可以减少处理SQL查询的过程。
+
+*  对表做分区可以更加简单的裁剪不需要的数据。简简单单的删除一个分区操作即可；而没有分区的表删除大量的数据则对系统资源请求很高。
+
+* 对一个大的数据仓库备份是一个非常耗时的、消耗资源的操作。如果数据在老分区中不再做修改，而且分区所在处于专用的表空间中, 这个表空间可以置入``read-only`模式，这样最后的备份所复制的表空间可以实现归档的目的。换句话说，此表空间不需要包含在备份操作。
+
+* 如果一个老分区从数据库中移除, 可以替换到一个较慢且廉价的存储中。高大上的存储可以保留给当前经常被查询的数据使用。
+
+* 维护操作可以针对单个分区操作，这样不会影响到表中剩余数据的使用。比如：老分区可以在搬迁到廉价的设备过程中不影响剩余的表数据访问
+  
+
+-------
+
+#### 分区的方式
+
+* 列表分区：分区的基于数据中所提供的值
+
+```plsql
+SQL> CREATE TABLE sales
+(
+	item# INTEGER,
+	quantity INTEGER,
+	store_name VARCHAR(30),
+	sale_date DATA
+)
+PARTITION BY LIST(state_code)
+(
+	PARTITION california VALUES('CA'),
+	PARTITION oregon VALUES('OR'),
+	PARTITION washington VALUES('WA')
+	
+)
+```
+
+* 范围分区
+
+* 周期间隔分区：基于每个月增加表的分区
+
+```plsql
+CREATE TABLE sales
+(
+	item# INTEGER,
+	quantity INTEGER,
+	store_name VARCHAR(30),
+	state_code VARCHAR(2),
+	sale_date DATE
+)
+PARTITION BY RANGE (sale_date)
+INTERVAL(NUMTOYMINTERVAL(1, 'MONTH'))
+(
+	PARTITION olddata VALUES LESS THAN (TO_DATE('01-JAN-2008','DD-MON-YYYY'))
+)
+```
+
+  
+
+* HASH分区
+
+* 参照分区： 从表参照主表的分区形式
+
+```plsql
+  CREATE TABLE Orders
+  (
+  PONo NUMBER(5),
+  Custno NUMBER(3),
+  OrderDate DATE,
+  ShipDate DATE,
+  ToStreet VARCHAR2(20),
+  ToCity VARCHAR2(20),
+  ToState CHAR(2),
+  ToZip VARCHAR2(10),
+  CONSTRAINT Orders_PK PRIMARY KEY (PONo),
+  CONSTRAINT Orders_FK1 FOREIGN KEY (CustNo) REFERENCES Customers
+  )
+  PARTITION BY RANGE (OrderDate)
+  (
+  PARTITION olddata VALUES LESS THAN (TO_DATE('01-JAN-2008','DD-MON-YYYY')),
+  PARTITION jan2008 VALUES LESS THAN (TO_DATE('01-FEB-2008','DD-MON-YYYY')),
+  PARTITION feb2008 VALUES LESS THAN (TO_DATE('01-MAR-2008','DD-MON-YYYY')),
+  PARTITION mar2008 VALUES LESS THAN (TO_DATE('01-APR-2008','DD-MON-YYYY')),
+  PARTITION apr2008 VALUES LESS THAN (TO_DATE('01-MAY-2008','DD-MON-YYYY')),
+  PARTITION may2008 VALUES LESS THAN (TO_DATE('01-JUN-2008','DD-MON-YYYY')),
+  PARTITION jun2008 VALUES LESS THAN (TO_DATE('01-JUL-2008','DD-MON-YYYY')),
+  PARTITION jul2008 VALUES LESS THAN (TO_DATE('01-AUG-2008','DD-MON-YYYY')),
+  PARTITION aug2008 VALUES LESS THAN (TO_DATE('01-SEP-2008','DD-MON-YYYY')),
+  PARTITION sep2008 VALUES LESS THAN (TO_DATE('01-OCT-2008','DD-MON-YYYY')),
+  PARTITION oct2008 VALUES LESS THAN (TO_DATE('01-NOV-2008','DD-MON-YYYY')),
+  PARTITION nov2008 VALUES LESS THAN (TO_DATE('01-DEC-2008','DD-MON-YYYY')),
+  PARTITION dec2008 VALUES LESS THAN (TO_DATE('01-JAN-2009','DD-MON-YYYY'))
+  );
+  CREATE TABLE LineItems
+  (
+  	LineNo NUMBER(2),
+  	PONo NUMBER(5) NOT NULL,
+  	StockNo NUMBER(4),
+  	Quantity NUMBER(2),
+  	Discount NUMBER(4,2),
+  	CONSTRAINT LineItems_PK PRIMARY KEY (LineNo, PONo),
+  	CONSTRAINT LineItems_FK1 FOREIGN KEY (PONo) REFERENCES Orders,
+  	CONSTRAINT LineItems_FK2 FOREIGN KEY (StockNo) REFERENCES StockItems
+  )
+  PARTITION BY REFERENCE (LineItems_FK1); 
+```
+> 上面的例子中主表`Orders`订单依然按照*订单时间*实现列表分区，而从表`LineItems`则参照主表中外键分区，主表数据怎么存放，从表也是按照相同的方式
+
+
+
+
+------
+
+
+
+## 账户管理
+
+用户管理的属性
+
+* 用户名
+* 验证方法
+* 默认表空间
+
+```plsql
+ALTER DATABASE DEFAULT TABLESPACE tablespace_name ;
+```
+
+* 表空间配额
+
+```plsql
+SELECT tablespace_name, bytes, max_bytes FROM dba_ts_quotas
+WHERE username='john';
+```
+
+![image-20200903013958386](./Oracle11g常用管理查询.assets/image-20200903013958386.png)
+
+* 临时表空间
+
+```plsql
+ALTER USER username TEMPORARY TABLESPACE tablespace_name;
+```
+
+> 无需对用户的临时表空间配额
+
+* 用户配置模版
+
+  	![Description of create_profile.gif follows](Oracle11g%E5%B8%B8%E7%94%A8%E7%AE%A1%E7%90%86%E6%9F%A5%E8%AF%A2.assets/create_profile.gif)
+
+  [详细请参考](https://docs.oracle.com/cd/E11882_01/server.112/e41084/statements_6010.htm#SQLRF01310)
+
+  以下是两个Profile范例
+
+```plsql
+  CREATE PROFILE app_user LIMIT 
+     SESSIONS_PER_USER          UNLIMITED 
+     CPU_PER_SESSION            UNLIMITED 
+     CPU_PER_CALL               3000 
+     CONNECT_TIME               45 
+     LOGICAL_READS_PER_SESSION  DEFAULT 
+     LOGICAL_READS_PER_CALL     1000 
+     PRIVATE_SGA                15K
+     COMPOSITE_LIMIT            5000000; 
+     
+  CREATE PROFILE app_user2 LIMIT
+     FAILED_LOGIN_ATTEMPTS 5
+     PASSWORD_LIFE_TIME 60
+     PASSWORD_REUSE_TIME 60
+     PASSWORD_REUSE_MAX 5
+     PASSWORD_VERIFY_FUNCTION verify_function
+     PASSWORD_LOCK_TIME 1/24
+     PASSWORD_GRACE_TIME 10;        
+```
+
+  
+
+![Description of create_user.gif follows](Oracle11g%E5%B8%B8%E7%94%A8%E7%AE%A1%E7%90%86%E6%9F%A5%E8%AF%A2.assets/create_user.gif)
+
+
+
+![image-20200903014018395](./Oracle11g常用管理查询.assets/image-20200903014018395.png)
+
+
+
+* 账户状态
+
+  * OPEN
+
+  * LOCKED
+
+  * EXPIRED
+
+  * EXPIRED & LOCKED
+
+  * EXPIRED(GRACE)
+
+  * LOCKED(TIMED)
+
+  * EXPIRED & LOCKED(TIMED)
+
+  * EXPIRED(GRACE) & LOCKED
+
+  * EXPIRED(GRACE) & LOCKED(TIMED)
+
+    + 修改用户锁定状态
+
+```plsql
+SQL> ALTER USER username ACCOUNT LOCK ;
+SQL> ALTER USER username ACCOUNT UNLOCK ;
+```
+
+  * 修改用户密码状态
+
+```plsql
+SQL> ALTER USER username PASSWORD EXPIRE;
+```
+
+> 这里没有`unexpire`的设置，只有通过重置密码的唯一方法
+
+* 创建账户并分配其使用的表空间示例
+
+```plsql
+SQL> create user scott identified by tiger
+default tablespace users temporary tablespace temp
+quota 100m on users, quota unlimited on example
+profile developer_profile
+password expire
+account unlock;
+```
+
+* 启用操作系统用户和密码验证时角色的二选一
+
+```plsql
+GRANT [sysdba | sysoper ] TO username ;
+
+CONNECT username / password [@db_alias] AS [ SYSOPER | SYSDBA ] ;
+
+CONNECT / AS [ SYSOPER | SYSDBA ] ;
+```
+
+* 修改账户示例
+
+  * 修改密码
+
+```plsql
+SQL> alter user scott identified by lion;
+```
+
+  * 修改默认表空间和临时表空间:
+
+```plsql
+SQL> alter user scott default tablespace store_data temporary tablespace temp;
+```
+
+  * 修改配额:
+
+```plsql
+SQL> alter user scott quota unlimited on store_data, quota 0 on users;
+```
+
+  * 修改配置模版:
+
+```plsql
+SQL> alter user scott profile prod_profile;
+```
+
+  * 强制用户修改密码:
+
+```plsql
+SQL> alter user scott password expire;
+```
+
+  * 锁定账户
+
+```plsql
+SQL> alter user scott account lock;
+```
+
+  * 删除账户
+
+```plsql
+SQL> drop user scott;
+SQL> drop user scott cascade;
+```
+------
+
+
+
+## 加载数据
+
+## 数据库监控
+
+### 监控数据的修改
+
+### 监控安全
+
+默认没有开始对安全的审计，需要提前使用`AUDIT CREATE SESSION`命令记录所有连接和断开连接的会话。
+
+```plsql
+SQL> SELECT userhost,
+	os_username,
+	username,
+	COUNT (*)
+FROM dba_audit_session
+GROUP BY userhost,
+	os_username,
+	username
+ORDER BY userhost,
+	os_username,
+	username;
+```
+
+> 审计中记录的为非系统管理级的账户登录信息，因而不包括`sys`和`system`
+
+### 监控备份
+
+### 监控数据文件的增长
+
+### 监控性能
+
+------
+
+
+
+## 数据备份
+
+### 备份的类型
+
+* 全库备份 VS 部分备份
+* Level 0 备份 VS Level 1 备份
+*  物理备份 VS 逻辑备份
+*  热备份 VS 冷备份
+* Oralce管理的备份 VS 用户管理的备份
+
+#### 物理备份演示
+
+#### 逻辑备份演示
+
+### RMAN 备份
+
+![image-20201004155605051](./Oracle11g%E5%B8%B8%E7%94%A8%E7%AE%A1%E7%90%86%E6%9F%A5%E8%AF%A2.assets/image-20201004155605051.png)
+
+* 查看备份集信息
+
+```plsql
+SET LINES 132 PAGESIZE 100
+BREAK ON REPORT ON bs_key ON completion_time ON bp_name ON file_name
+COL bs_key FORM 99999 HEAD "BS Key"
+COL bp_name FORM a40 HEAD "BP Name"
+COL file_name FORM a40 HEAD "Datafile"
+--
+SELECT
+s.recid bs_key
+,TRUNC(s.completion_time) completion_time
+,p.handle bp_name
+,f.name file_name
+FROM v$backup_set s
+,v$backup_piece p
+,v$backup_datafile d
+,v$datafile f
+WHERE p.set_stamp = s.set_stamp
+AND p.set_count = s.set_count
+AND d.set_stamp = s.set_stamp
+AND d.set_count = s.set_count
+AND d.file# = f.file#
+ORDER BY
+s.recid
+,p.handle
+,f.name;
+```
+
+------
+
+#### RMAN-06149
+
+当你尝试在你自己的开发环境使用 `RMAN`备份时，出现 "RMAN-06149: cannot BACKUP DATABASE in NOARCHIVELOG mode"的错误信息.
+
+```
+RMAN> backup database tag 'BEFORE-IMPORT-PRODUCTION-2018Q1';Starting backup at 18-APR-18using target database control file instead of recovery catalogallocated channel: ORA_DISK_1channel ORA_DISK_1: SID=352 device type=DISKRMAN-00571: ===========================================================RMAN-00569: =============== ERROR MESSAGE STACK FOLLOWS ===============RMAN-00571: ===========================================================RMAN-03002: failure of backup command at 04/18/2018 11:08:26RMAN-06149: cannot BACKUP DATABASE in NOARCHIVELOG mode
+```
+
+这是什么原因？这是因为你自己的开发环境没有置入到对日志归档的模式，通过下面的步骤解决
+
+
+
+如果你处在`ARCHIVELOG` 模式下， 我们可以对数据库备份同时进行数据库读写访问，即使备份这一时刻用户仍产生千变万化的数据。这就是不一致备份的形态。尽管如此在备份过程中，那些每秒都在变化的数据填充到所需的归档日志中去了。所以我们不用担心是否有数据的遗漏。这种备份模式是最高效的。
+
+然而你的开发模式处于`NOARCHIVELOG`,就无法对变化的数据记录到归档日志中,因此 RMAN 无条件决绝了备份操作.
+
+更多请查看 *[How to Make a Self-Contained and Consistent Full Backup Set](https://logic.edchen.org/how-to-make-a-self-contained-and-consistent-full-backup-set/)*
+
+##### 解决方法
+
+可以通过[切换到 ARCHIVELOG 模式](https://logic.edchen.org/how-to-enable-archivelog-mode-in-oracle/), 接着在备份
+
+1. 首先你需要停掉数据库再将其置入挂载状态：
+
+2. ```plsql
+   SQL> shutdown immediate;
+   SQL> startup mount;
+   SQL> alter database archivelog;
+   SQL> alter system archivelog start;
+   SQL> alter system set log_archive_start = true scope = spfile;
+   SQL> alter database open;
+   ```
+
+3. 通过以上修改，就不会再出现RMAN备份时的 **RMAN-06149: cannot BACKUP DATABASE in NOARCHIVELOG mode**, 报错了。
+
+4. 
+
+5. 但如果你不想改变现有的 `NOARCHIVELOG` 模式，你可以采用下面两种方法
+
+6. * 数据库 **READ ONLY** 模式下备份
+
+7. ```plsql
+   RMAN> shutdown immediate;
+   RMAN> startup open read only;
+   RMAN> backup database tag 'BEFORE-IMPORT-PRODUCTION-2018Q1';
+   RMAN> shutdown immediate;
+   RMAN> startup;
+   ```
+
+8. * 还有一种方法，将数据库置入到`mount`模式而不将数据库打开，这样也不会生成变化的数据。 而等你备份完之后再将数据库置入到读写模式，这就是冷备份模式
+
+9. ```plsql
+   RMAN> shutdown immediate;
+   
+   database closed
+   database dismounted
+   Oracle instance shut down
+   
+   RMAN> startup mount;
+   
+   connected to target database (not started)
+   Oracle instance started
+   database mounted
+   
+   Total System Global Area   20199768064 bytes
+   
+   Fixed Size                     3721224 bytes
+   Variable Size              10133440504 bytes
+   Database Buffers            9999220736 bytes
+   Redo Buffers                  63385600 bytes
+   ```
+
+10. 执行备份
+
+11. ```plsql
+    RMAN> backup database tag 'BEFORE-IMPORT-PRODUCTION-2018Q1';
+    
+    Starting backup at 18-APR-18
+    allocated channel: ORA_DISK_1
+    channel ORA_DISK_1: SID=701 device type=DISK
+    channel ORA_DISK_1: starting full datafile backup set
+    channel ORA_DISK_1: specifying datafile(s) in backup set
+    input datafile file number=00003 name=/oradata/ORCL/undotbs01.dbf
+    input datafile file number=00002 name=/oradata/ORCL/sysaux01.dbf
+    input datafile file number=00001 name=/oradata/ORCL/system01.dbf
+    input datafile file number=00004 name=/oradata/ORCL/users01.dbf
+    channel ORA_DISK_1: starting piece 1 at 18-APR-18
+    ...
+    RMAN> list backup of database summary;
+    
+    
+    List of Backups
+    ===============
+    Key     TY LV S Device Type Completion Time #Pieces #Copies Compressed Tag
+    ------- -- -- - ----------- --------------- ------- ------- ---------- ---
+    ...
+    87      B  F  A DISK        18-APR-18       1       1       NO         BEFORE-IMPORT-PRODUCTION-2018Q1
+    ```
+
+12. 这样也不会出现 **RMAN-06149: cannot BACKUP DATABASE in NOARCHIVELOG mode**.错误
+
+13. 接下来，打开数据库
+
+14. ```plsql
+    RMAN> alter database open;
+    
+    Statement processed
+    ```
+
+### 配置自动备份控制文件
+
+```plsql
+RMAN> show controlfile autobackup;
+RMAN> configure controlfile autobackup on;
+```
 
 ## 数据恢复
+
+### 数据恢复的类型
+
+* 数据还原 VS 数据恢复
+
+* 完整恢复 VS 部分恢复
+
+* 传统模式 VS 数据闪回
+* 物理恢复 VS 逻辑恢复
+
+### 闪回技术
+
+1. 查询闪回
+2. 版本闪回
+3. 数据表闪回
+4. 误删闪回
+5. 数据归档闪回
+6. 数据库闪回
 
 * 查看 **checkpoint**, 决定哪些数据需要恢复
 
@@ -1248,6 +2590,150 @@ SQL> select count(*) from test;
 ```plsql
 SQL> select count(*) from dba_recyclebin where owner='DROPPER';
 ```
+
+
+
+------
+
+## Oracle 实例的配置
+
+### Linux 下环境变量设置
+
+```shell
+$ export ORACLE_HOME=/orahome/app/oracle/product/12.1.0.1/db_1
+$ export ORACLE_SID=O12C
+$ export LD_LIBRARY_PATH=/usr/lib:$ORACLE_HOME/lib
+$ export PATH=$ORACLE_HOME/bin:$PATH  
+```
+
+默认Oracle数据搜索查询中区分字符的大小写，可以建立会话后设定两个变量
+
+```plsql
+SQL> ALTER SESSION SET NLS_COMP=LINGUISTIC;
+SQL> ALTER SESSION SET NLS_SORT = BINARY_CI;
+
+SQL> set sqlprompt "_user'@'_connect_identifier>"
+SYSTEM@orcl11g>
+```
+
+
+
+### 侦听实例状态
+
+可以使用 `lsnrctl status` 查看实例启动状态
+
+```shell
+C:\Users\yangwawa>lsnrctl status
+
+LSNRCTL for 64-bit Windows: Version 11.2.0.1.0 - Production on 02-SEP-2020 19:10:25
+
+Copyright (c) 1991, 2010, Oracle.  All rights reserved.
+
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=IPC)(KEY=EXTPROC1521)))
+STATUS of the LISTENER
+------------------------
+Alias                     LISTENER
+Version                   TNSLSNR for 64-bit Windows: Version 11.2.0.1.0 - Production
+Start Date                29-AUG-2020 23:23:57
+Uptime                    3 days 19 hr. 46 min. 27 sec
+Trace Level               off
+Security                  ON: Local OS Authentication
+SNMP                      OFF
+Listener Parameter File   E:\app\yangwawa\product\11.2.0\dbhome_1\network\admin\listener.ora
+Listener Log File         e:\app\yangwawa\diag\tnslsnr\DESKTOP-08E761I\listener\alert\log.xml
+Listening Endpoints Summary...
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=ipc)(PIPENAME=\\.\pipe\EXTPROC1521ipc)))
+  (DESCRIPTION=(ADDRESS=(PROTOCOL=tcp)(HOST=127.0.0.1)(PORT=1521)))
+Services Summary...
+Service "orcl" has 1 instance(s).
+  Instance "orcl", status READY, has 1 handler(s) for this service...
+Service "orclXDB" has 1 instance(s).
+  Instance "orcl", status READY, has 1 handler(s) for this service...
+Service "rcat" has 1 instance(s).
+  Instance "rcat", status READY, has 1 handler(s) for this service...
+Service "rcatXDB" has 1 instance(s).
+  Instance "rcat", status READY, has 1 handler(s) for this service...
+The command completed successfully
+```
+
+* 也可以交互式查询
+
+```shell
+C:\Users\yangwawa>lsnrctl
+
+LSNRCTL for 64-bit Windows: Version 11.2.0.1.0 - Production on 02-SEP-2020 19:11:35
+
+Copyright (c) 1991, 2010, Oracle.  All rights reserved.
+
+Welcome to LSNRCTL, type "help" for information.
+
+LSNRCTL> services listener
+Connecting to (DESCRIPTION=(ADDRESS=(PROTOCOL=IPC)(KEY=EXTPROC1521)))
+Services Summary...
+Service "orcl" has 1 instance(s).
+  Instance "orcl", status READY, has 1 handler(s) for this service...
+    Handler(s):
+      "DEDICATED" established:3344 refused:0 state:ready
+         LOCAL SERVER
+Service "orclXDB" has 1 instance(s).
+  Instance "orcl", status READY, has 1 handler(s) for this service...
+    Handler(s):
+      "D000" established:0 refused:0 current:0 max:1022 state:ready
+         DISPATCHER <machine: DESKTOP-08E761I, pid: 7112>
+         (ADDRESS=(PROTOCOL=tcp)(HOST=DESKTOP-08E761I)(PORT=50731))
+Service "rcat" has 1 instance(s).
+  Instance "rcat", status READY, has 1 handler(s) for this service...
+    Handler(s):
+      "DEDICATED" established:0 refused:0 state:ready
+         LOCAL SERVER
+Service "rcatXDB" has 1 instance(s).
+  Instance "rcat", status READY, has 1 handler(s) for this service...
+    Handler(s):
+      "D000" established:0 refused:0 current:0 max:1022 state:ready
+         DISPATCHER <machine: DESKTOP-08E761I, pid: 10752>
+         (ADDRESS=(PROTOCOL=tcp)(HOST=DESKTOP-08E761I)(PORT=56243))
+The command completed successfully
+```
+
+* 使用自带工具管理 **Oracle Net Manager** 
+
+![image-20200902191509711](./Oracle11g常用管理查询.assets/image-20200902191509711.png)
+
+
+
+* 建立数据库链接
+
+  如果需要在不同的数据库之间查询数据，可以在当前实例中建立其他实例的数据库链接
+
+  
+
+![Description of create_database_link.gif follows](https://docs.oracle.com/cd/E11882_01/server.112/e41084/img/create_database_link.gif)
+
+
+
+```plsql
+ SQL>　CREATE DATABASE LINK orclInst
+ 2  　　CONNECT TO hr IDENTIFIED BY redhat USING 'orcl';
+ SQL> DESC user_tables@orclInst;
+```
+
+> 建立链接之后在查询表后添加 `@linkname`  , 设置可以通过其他数据库的结构建表以及插入数据
+>
+```plsql
+SQL> CREATE TABLE orcl_user_tables AS SELECT * FROM user_tables@orclInst;
+SQL> INSERT INTO orcl_user_tables AS SELECT * FROM user_tables@orclInst;
+```
+
+
+
+
+
+
+
+
+
+
+
 
 ------
 
@@ -1579,14 +3065,9 @@ SQL>
 
 ### RMAN
 
-![image-20201004155605051](./Oracle11g%E5%B8%B8%E7%94%A8%E7%AE%A1%E7%90%86%E6%9F%A5%E8%AF%A2.assets/image-20201004155605051.png)
 
-### 配置自动备份控制文件
 
-```plsql
-RMAN> show controlfile autobackup;
-RMAN> configure controlfile autobackup on;
-```
+
 
 ------
 
@@ -2017,6 +3498,236 @@ Elapsed: 00:00:51.09
   * 判断不同数据库组件的 I/O 需求
   * 调整操作系统来优化数据库
 * SQL语句调优
+
+
+
+### DBMS_ADVISOR 数据库分析推荐
+
+DBMS_ADVISOR 包提供了一系列的数据库分析推荐存储过程和函数
+
+下面给出一个 `QUICK_TUNE`作为范例：
+
+1. 首先以普通用户登录，从`user_objects`表创建一张山寨的测试表
+
+```plsql
+SQL> conn hr/redhat;
+SQL> ALTER SESSION SET NLS_COMP=LINGUISTIC;
+SQL> ALTER SESSION SET NLS_SORT = BINARY_CI;
+
+-- 
+SQL> CREATE TABLE test_user_objects as select * from user_objects;
+```
+
+2. 接着利用存储过程创建分析的任务
+
+```plsql
+-- create a quick tune task, `attr1` is the SQL statement
+-- which one to be analyzed.
+SQL> BEGIN 
+  dbms_advisor.quick_tune(
+      advisor_name => dbms_advisor.sqlaccess_advisor,
+      task_name => 'QUICK_TUNE',
+      attr1  => 'SELECT * FROM test_user_objects  WHERE object_id = 47');
+END;
+/
+```
+
+3. 执行此任务并且直接输出结果
+
+```plsql
+-- run task and get report
+SQL> select dbms_advisor.get_task_script('QUICK_TUNE') from dual;
+
+Rem  SQL Access Advisor: Version 12.1.0.2.0 - Production
+Rem  
+Rem  Username:        HR
+Rem  Task:            QUICK_TUNE
+Rem  Execution date:   
+Rem  
+
+CREATE INDEX "HR"."TEST_USER_OBJEC_IDX$$_01350000"
+    ON "HR"."TEST_USER_OBJECTS"
+    ("OBJECT_ID")
+    COMPUTE STATISTICS;
+```
+> 以上分析结果，告知我们需要使用下面语句给山寨的表所使用的列`object_id`创建一个索引，并打印输出`DDL`语句
+
+
+4. 删除任务
+
+```plsql
+EXEC DBMS_ADVISOR.delete_task('QUICK_TUNE');
+```
+
+
+
+### Statspack 统计信息包
+
+`statspack`通过对系统统计信息拍快照，可以实现更为准确的数据分析，关于如何安装和使用文档放在文本中：
+
+`$ORACLE_HOME/rdbms/admin/spdoc.txt`
+
+默认情况下，`statspack`包没有导入，需要使用`spcreate.sql`管理脚本导入。导入的前部分自动创建了==PERFSTAT==用户，提问你设置其密码，接着需要指定表空间（默认`SYSAUX`）和临时表空间 (默认`TEMP`), 。
+
+```plsql
+SQL> @?/rdbms/admin/spcreate
+
+Choose the PERFSTAT user's password
+-----------------------------------
+Not specifying a password will result in the installation FAILING
+
+Enter value for perfstat_password: redhat
+redhat
+
+
+Choose the Default tablespace for the PERFSTAT user
+---------------------------------------------------
+Below is the list of online tablespaces in this database which can
+store user data.  Specifying the SYSTEM tablespace for the user's
+default tablespace will result in the installation FAILING, as
+using SYSTEM for performance data is not supported.
+
+Choose the PERFSTAT users's default tablespace.  This is the tablespace
+in which the STATSPACK tables and indexes will be created.
+
+TABLESPACE_NAME                CONTENTS  STATSPACK DEFAULT TABLESPACE
+------------------------------ --------- ----------------------------
+EXAMPLE                        PERMANENT
+SYSAUX                         PERMANENT *
+USERS                          PERMANENT
+
+Pressing <return> will result in STATSPACK's recommended default
+tablespace (identified by *) being used.
+
+Enter value for default_tablespace:
+
+Using tablespace SYSAUX as PERFSTAT default tablespace.
+
+
+Choose the Temporary tablespace for the PERFSTAT user
+-----------------------------------------------------
+Below is the list of online tablespaces in this database which can
+store temporary data (e.g. for sort workareas).  Specifying the SYSTEM
+tablespace for the user's temporary tablespace will result in the
+installation FAILING, as using SYSTEM for workareas is not supported.
+
+Choose the PERFSTAT user's Temporary tablespace.
+
+TABLESPACE_NAME                CONTENTS  DB DEFAULT TEMP TABLESPACE
+------------------------------ --------- --------------------------
+TEMP                           TEMPORARY *
+
+Pressing <return> will result in the database's default Temporary
+tablespace (identified by *) being used.
+
+Enter value for temporary_tablespace:
+
+Using tablespace TEMP as PERFSTAT temporary tablespace.
+...
+```
+
+> 内容过长，略过
+
+
+
+一旦安装好包之后，登录`perfstat`账户，开始拍快照收集系统统计信息。
+
+```plsql
+SQL> CONN perfstat/redhat;
+SQL> EXEC STATSPACK.snap;
+
+PL/SQL procedure successfully completed.
+```
+
+伺候你可以对系统再拍其他的快照,取决于你分析的起始和结束的时间。可以让 `DBMS_JOB` 包自动的定时拍快照 。 `spauto.sql` 脚本能用来规划系统每个小时（整点）拍一个快照。
+
+运行管理脚本`$ORACLE_HOME/rdbms/admin/spauto.sql`
+
+```plsql
+SQL> @?/rdbms/admin/spauto
+
+PL/SQL procedure successfully completed.
+
+
+Job number for automated statistics collection for this instance
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Note that this job number is needed when modifying or removing
+the job:
+
+     JOBNO
+----------
+         1
+
+
+Job queue process
+~~~~~~~~~~~~~~~~~
+Below is the current setting of the job_queue_processes init.ora
+parameter - the value for this parameter must be greater
+than 0 to use automatic statistics gathering:
+
+NAME                                 TYPE        VALUE
+------------------------------------ ----------- ------------------------------
+job_queue_processes                  integer     1000
+
+
+Next scheduled run
+~~~~~~~~~~~~~~~~~~
+The next scheduled run for this job is:
+
+       JOB NEXT_DATE NEXT_SEC
+---------- --------- --------------------------------
+         1 24-NOV-20 22:00:00
+
+```
+
+如果你使用自动化拍快照收集信息，当你需要删除部分快照时。你可以登录`PERFSTAT`账户通过运行`sppurge.sql` 管理脚本实现. 这个脚本通过系统开始和结束点删除一段范围的快照
+
+`$ORACLE_HOME/rdbms/admin/sppurge.sql`
+
+
+
+一旦你有了至少两个快照，你可以运行`statspack`报告并找出两个快照之间的分析统计数据。这个脚本提示你**开始**和**结束**的快照根据文件名输出报告。
+`$ORACLE_HOME/rdbms/admin/spreport.sql`
+
+```plsql
+SQL> @?/rdbms/admin/spreport.sql
+STATSPACK report for
+
+Database    DB Id    Instance     Inst Num  Startup Time   Release     RAC
+~~~~~~~~ ----------- ------------ -------- --------------- ----------- ---
+           402000462 testing             1 24-Nov-20 10:18 12.1.0.2.0  NO
+
+Host Name             Platform                CPUs Cores Sockets   Memory (G)
+~~~~ ---------------- ---------------------- ----- ----- ------- ------------
+     oracle11g        Linux x86 64-bit           1     1       1          1.9
+
+Snapshot       Snap Id     Snap Time      Sessions Curs/Sess Comment
+~~~~~~~~    ---------- ------------------ -------- --------- ------------------
+Begin Snap:          1 24-Nov-20 21:40:17       43       1.8
+  End Snap:          2 24-Nov-20 21:50:36       41       1.9
+   Elapsed:      10.32 (mins) Av Act Sess:       0.0
+   DB time:       0.03 (mins)      DB CPU:       0.02 (mins)
+
+Cache Sizes            Begin        End
+~~~~~~~~~~~       ---------- ----------
+    Buffer Cache:       216M              Std Block Size:         8K
+     Shared Pool:       264M                  Log Buffer:     5,068K
+
+Load Profile              Per Second    Per Transaction    Per Exec    Per Call
+~~~~~~~~~~~~      ------------------  ----------------- ----------- -----------
+      DB time(s):                0.0                0.1        0.00        0.03
+```
+
+> 内容过多，略
+
+点 [这里](https://oracle-base.com/articles/8i/sp_demo.lst).可以查看关于`statspack`报告的范例
+
+
+
+更多资料请查看：
+
+- [Performance Tuning with Statspack](http://www.oracle.com/technetwork/database/performance/statspack-tuning-otn-new-128500.pdf)
+- [Oracle Statspack Survival Guide](http://www.akadia.com/services/ora_statspack_survival_guide.html)
 
 ### 性能分析时所用到的视图
 
@@ -3191,7 +4902,595 @@ FROM   dual;
 SET PAGESIZE 24
 ```
 
+------
 
+## SQL trace 语句跟踪和10046事件
+
+最快的方法捕捉回话中执行的 SQL 语句的方法就是切换到 `Trace` 模式,又或者设置对特定时间段设置 ==10046== 号事件。结果将记录在trace文件中， 然后通过`tkprof`工具转换文件的格式读出来。如何解读trace文件中的内容这里就不做详细介绍，这个要通过工作经验积累花时间分析。我们重点放在以下：
+
+- [生产SQL trace 文件](https://oracle-base.com/articles/misc/sql-trace-10046-trcsess-and-tkprof#generating_sql_trace_files)
+- [跟踪单个SQL语句](https://oracle-base.com/articles/misc/sql-trace-10046-trcsess-and-tkprof#tracing_individual_sql_statements)
+- [识别trace文件](https://oracle-base.com/articles/misc/sql-trace-10046-trcsess-and-tkprof#identifying_trace_files)
+- [trcsess工具](https://oracle-base.com/articles/misc/sql-trace-10046-trcsess-and-tkprof#trcsess)
+- [tkprof工具](https://oracle-base.com/articles/misc/sql-trace-10046-trcsess-and-tkprof#tkprof)
+- [Trace范例](https://oracle-base.com/articles/misc/sql-trace-10046-trcsess-and-tkprof#trace_example)
+- [Trace分析器](https://oracle-base.com/articles/misc/sql-trace-10046-trcsess-and-tkprof#trace_analyzer)
+- [查询 Trace 文件中内容](https://oracle-base.com/articles/misc/sql-trace-10046-trcsess-and-tkprof#query_contents_of_trace_files)
+- [SQL Developer](https://oracle-base.com/articles/misc/sql-trace-10046-trcsess-and-tkprof#sql-developer)
+
+相关知识请参考：
+
+- [DBMS_APPLICATION_INFO : For Code Instrumentation](https://oracle-base.com/articles/8i/dbms_application_info)
+- [DBMS_SESSION : Managing Sessions From a Connection Pool in Oracle Databases](https://oracle-base.com/articles/misc/dbms_session)
+- [Explain Plan Usage](https://oracle-base.com/articles/8i/explain-plan-usage)
+- [DBMS_XPLAN : Display Oracle Execution Plans](https://oracle-base.com/articles/9i/dbms_xplan)
+- [Real-Time SQL Monitoring using DBMS_SQLTUNE](https://oracle-base.com/articles/11g/real-time-sql-monitoring-11gr1)
+
+
+
+### 生成Trace 文件
+
+Oracle 10g 中使用 `DBMS_MONITOR` 包集中式的管理. 下面的例子显示在 Oracle 10g 中开启和关闭 SQL trace 的几种用法和参数。
+
+```plsql
+-- Oracle 10g
+
+SQL> EXEC DBMS_MONITOR.session_trace_enable;
+
+SQL> EXEC DBMS_MONITOR.session_trace_enable(waits=>TRUE, binds=>FALSE);
+
+SQL> EXEC DBMS_MONITOR.session_trace_disable;
+
+SQL> EXEC DBMS_MONITOR.session_trace_enable(session_id=>1234, serial_num=>1234);
+
+SQL> EXEC DBMS_MONITOR.session_trace_enable(session_id =>1234, serial_num=>1234, waits=>TRUE, binds=>FALSE);
+
+SQL> EXEC DBMS_MONITOR.session_trace_disable(session_id=>1234, serial_num=>1234);
+
+SQL> EXEC DBMS_MONITOR.client_id_trace_enable(client_id=>'tim_hall');
+
+SQL> EXEC DBMS_MONITOR.client_id_trace_enable(client_id=>'tim_hall', waits=>TRUE, binds=>FALSE);
+
+SQL> EXEC DBMS_MONITOR.client_id_trace_disable(client_id=>'tim_hall');
+
+SQL> EXEC DBMS_MONITOR.serv_mod_act_trace_enable(service_name=>'db10g', module_name=>'test_api', action_name=>'running');
+
+SQL> EXEC DBMS_MONITOR.serv_mod_act_trace_enable(service_name=>'db10g', module_name=>'test_api', action_name=>'running', -> waits=>TRUE, binds=>FALSE);
+
+SQL> EXEC DBMS_MONITOR.serv_mod_act_trace_disable(service_name=>'db10g', module_name=>'test_api', action_name=>'running');
+
+```
+
+首先，trace 可以在基于 `V$SESSION` 视图中`client_identifier`字段的值启用多个会话上。其次, trace 也可以在基于 `V$SESSION` 视图中`service_name`, `module`, `action`字段值的组合。
+
+```plsql
+-- All versions.
+SQL> ALTER SESSION SET sql_trace=TRUE;
+SQL> ALTER SESSION SET sql_trace=FALSE;
+
+SQL> EXEC DBMS_SESSION.set_sql_trace(sql_trace => TRUE);
+SQL> EXEC DBMS_SESSION.set_sql_trace(sql_trace => FALSE);
+
+SQL> ALTER SESSION SET EVENTS '10046 trace name context forever, level 8';
+SQL> ALTER SESSION SET EVENTS '10046 trace name context off';
+
+SQL> EXEC DBMS_SYSTEM.set_sql_trace_in_session(sid=>123, serial#=>1234, sql_trace=>TRUE);
+SQL> EXEC DBMS_SYSTEM.set_sql_trace_in_session(sid=>123, serial#=>1234, sql_trace=>FALSE);
+
+SQL> EXEC DBMS_SYSTEM.set_ev(si=>123, se=>1234, ev=>10046, le=>8, nm=>'');
+SQL> EXEC DBMS_SYSTEM.set_ev(si=>123, se=>1234, ev=>10046, le=>0, nm=>'');
+
+-- Available from SQL*Plus since 8i (commandline utility prior to this.
+SQL> CONN sys/password AS SYSDBA;  -- User must have SYSDBA.
+SQL> ORADEBUG SETMYPID;            -- Debug current session.
+SQL> ORADEBUG SETOSPID 1234;       -- Debug session with the specified OS process.
+SQL> ORADEBUG SETORAPID 123456;    -- Debug session with the specified Oracle process ID.
+
+SQL> ORADEBUG EVENT 10046 TRACE NAME CONTEXT FOREVER, LEVEL 12;
+SQL> ORADEBUG TRACEFILE_NAME;      -- Display the current trace file.
+SQL> ORADEBUG EVENT 10046 TRACE NAME CONTEXT OFF;
+ 
+-- All versions, requires DBMS_SUPPORT package to be loaded.
+SQL> EXEC DBMS_SUPPORT.start_trace(waits=>TRUE, binds=>FALSE);
+SQL> EXEC DBMS_SUPPORT.stop_trace;
+
+SQL> EXEC DBMS_SUPPORT.start_trace_in_session(sid=>123, serial=>1234, waits=>TRUE, binds=>FALSE);
+SQL> EXEC DBMS_SUPPORT.stop_trace_in_session(sid=>123, serial=>1234);
+```
+
+> `DBMS_SUPPORT` 包默认不存在数据库中， 但是可以通过 SYS 以后执行 "dbmssupp.sql" 脚本导入.
+
+```plsql
+-- This.
+@$ORACLE_HOME/rdbms/admin/dbmssupp.sql
+
+-- Or this.
+@?/rdbms/admin/dbmssupp.sql
+```
+
+For methods that require tracing levels the following are valid values.
+
+- 0 - No trace. Like switching sql_trace off.
+- 2 - The equivalent of regular sql_trace.
+- 4 - The same as 2, but with the addition of bind variable values.
+- 8 - The same as 2, but with the addition of wait events.
+- 12 - The same as 2, but with both bind variable values and wait events.
+
+The same combinations are possible for those methods with boolean parameters for `waits` and `binds`.
+
+
+
+### Tracing Individual SQL Statements
+
+SQL trace can be initiated for an individual SQL statement by substituting the required `SQL_ID` into the following statement.
+
+```plsql
+SQL> -- SQL Trace (10046)
+SQL> ALTER SYSTEM SET EVENTS 'sql_trace [sql:&&sql_id] bind=true, wait=true';
+
+SQL> -- 10053
+SQL> ALTER SESSION SET EVENTS 'trace[rdbms.SQL_Optimizer.*][sql:sql_id]';
+```
+
+The `SQL_ID` of a statement can be found in the `V$SQL` or `V$SQLSTAT` view for recent SQL, or from the `DBA_HIST_SQLSTAT` view from the AWR repository for historical statements.
+
+
+
+### Identifying Trace Files
+
+Oracle allows you to set the `TRACEFILE_IDENTIFIER` parameter at session level, allowing you to include some recognizable text into the trace file name.
+
+```plsql
+ALTER SESSION SET TRACEFILE_IDENTIFIER = "MY_TEST_SESSION";
+```
+
+Even without this, we can easily identify the trace file for the current session using the `USER_DUMP_DEST` value with the instance name and the session's process id. The [identify_trace_file.sql](https://oracle-base.com/dba/script.php?category=monitoring&file=identify_trace_file.sql) script combines these values to produce the expected trace file name.
+
+```plsql
+SET LINESIZE 100
+COLUMN trace_file FORMAT A60
+
+SELECT s.sid,
+       s.serial#,
+       pa.value || '/' || LOWER(SYS_CONTEXT('userenv','instance_name')) ||    
+       '_ora_' || p.spid || '.trc' AS trace_file
+FROM   v$session s,
+       v$process p,
+       v$parameter pa
+WHERE  pa.name = 'user_dump_dest'
+AND    s.paddr = p.addr
+AND    s.audsid = SYS_CONTEXT('USERENV', 'SESSIONID');
+```
+
+If you are using a windows environment you will need to alter the "/" to a "\" in the concatenated string.
+
+Identification of trace files is simpler in Oracle 11g due to the introduction of diagnostic views. The Oracle 11g version of the [identify_trace_file.sql](https://oracle-base.com/dba/script.php?category=11g&file=identify_trace_file.sql) is shown below.
+
+```plsql
+SET LINESIZE 100
+COLUMN value FORMAT A60
+
+SELECT value
+FROM   v$diag_info
+WHERE  name = 'Default Trace File';
+```
+
+You can identify the trace file for a specific session using the `V$SESSION` and `V$PROCESS` views.
+
+```plsql
+SELECT p.tracefile
+FROM   v$session s
+       JOIN v$process p ON s.paddr = p.addr
+WHERE  s.sid = 635;
+
+TRACEFILE
+------------------------------------------------------------------
+/u01/app/oracle/diag/rdbms/db11g/db11g/trace/db11g_ora_9699.trc
+
+SQL>
+```
+
+
+
+In Oracle 12.2 the `V$DIAG_TRACE_FILE` and `V$DIAG_TRACE_FILE_CONTENTS` views make it even easier. The `V$DIAG_TRACE_FILE` view identifies all trace files currently under the instances ADR home.
+
+```plsql
+SELECT trace_filename
+FROM   v$diag_trace_file
+WHERE  con_id = 3;
+```
+
+The `V$DIAG_TRACE_FILE_CONTENTS` allows you to query the contents of a trace file.
+
+```plsql
+SELECT payload
+FROM   v$diag_trace_file_contents
+WHERE  trace_filename = 'cdb1_j002_16830.trc'
+ORDER BY line_number;
+```
+
+
+
+### trcsess
+
+Activating trace on multiple sessions means that trace information is spread throughout many trace files. For this reason Oracle 10g introduced the `trcsess` utility, which allows trace information from multiple trace files to be identified and consolidated into a single trace file. The `trcsess` usage is listed below.
+
+```
+trcsess [output=<output file name >]  [session=<session ID>] [clientid=<clientid>]
+        [service=<service name>] [action=<action name>] [module=<module name>] <trace file names>
+
+output=<output file name> output destination default being standard output.
+session=<session Id> session to be traced.
+Session id is a combination of session Index & session serial number e.g. 8.13.
+clientid=<clientid> clientid to be traced.
+service=<service name> service to be traced.
+action=<action name> action to be traced.
+module=<module name> module to be traced.
+<trace_file_names> Space separated list of trace files with wild card '*' supported.
+```
+
+With all these options the consolidated trace file can be as broad or as specific as needed.
+
+
+
+### tkprof
+
+The SQL trace files produced by the methods discussed previously can be read in their raw form, or they can be translated by the tkprof utility into a more human readable form. The output below lists the usage notes from the tkprof utility in Oracle 10g.
+
+```shell
+$ tkprof
+Usage: tkprof tracefile outputfile [explain= ] [table= ]
+              [print= ] [insert= ] [sys= ] [sort= ]
+  table=schema.tablename   Use 'schema.tablename' with 'explain=' option.
+  explain=user/password    Connect to ORACLE and issue EXPLAIN PLAN.
+  print=integer    List only the first 'integer' SQL statements.
+  aggregate=yes|no
+  insert=filename  List SQL statements and data inside INSERT statements.
+  sys=no           TKPROF does not list SQL statements run as user SYS.
+  record=filename  Record non-recursive statements found in the trace file.
+  waits=yes|no     Record summary for any wait events found in the trace file.
+  sort=option      Set of zero or more of the following sort options:
+    prscnt  number of times parse was called
+    prscpu  cpu time parsing
+    prsela  elapsed time parsing
+    prsdsk  number of disk reads during parse
+    prsqry  number of buffers for consistent read during parse
+    prscu   number of buffers for current read during parse
+    prsmis  number of misses in library cache during parse
+    execnt  number of execute was called
+    execpu  cpu time spent executing
+    exeela  elapsed time executing
+    exedsk  number of disk reads during execute
+    exeqry  number of buffers for consistent read during execute
+    execu   number of buffers for current read during execute
+    exerow  number of rows processed during execute
+    exemis  number of library cache misses during execute
+    fchcnt  number of times fetch was called
+    fchcpu  cpu time spent fetching
+    fchela  elapsed time fetching
+    fchdsk  number of disk reads during fetch
+    fchqry  number of buffers for consistent read during fetch
+    fchcu   number of buffers for current read during fetch
+    fchrow  number of rows fetched
+    userid  userid of user that parsed the cursor
+
+$
+```
+
+The waits parameter was only added in Oracle 9i, so prior to this version wait information had to be read from the raw trace file. The values of bind variables must be read from the raw files as they are not displayed in the tkprof output.
+
+The following section shows an example of gathering SQL trace for a session to give you an idea of the whole process.
+
+
+
+### Trace 范例
+
+下面的脚本生成一张测试表并生成测试数据：
+
+```plsql
+CREATE OR REPLACE TABLE sql_trace_test (
+  id  NUMBER,
+  description  VARCHAR2(50)
+);
+
+EXEC DBMS_STATS.gather_table_stats('sys', 'sql_trace_test');
+
+CREATE OR REPLACE PROCEDURE populate_sql_trace_test (p_loops  IN  NUMBER) AS
+  l_number  NUMBER;
+BEGIN
+  FOR i IN 1 .. p_loops LOOP
+    INSERT INTO sql_trace_test (id, description)
+    VALUES (i, 'Description for ' || i);
+  END LOOP;
+  
+  SELECT COUNT(*)
+  INTO   l_number
+  FROM   sql_trace_test;
+  
+  COMMIT;
+  
+  DBMS_OUTPUT.put_line(l_number || ' rows inserted.');
+END;
+/
+SHOW ERRORS
+```
+
+> 生成一张空表的统计信息不切实际，但是这并不会阻止动态采样数据记录到 trace 文件。
+
+接下来，我们识别当前会话的 trace 文件,
+
+```
+SQL> @identify_trace_file.sql
+
+       SID    SERIAL# TRACE_FILE
+---------- ---------- ------------------------------------------------------------
+       130      26739 /u01/app/oracle/admin/DEV/udump/dev1_ora_367660.trc
+
+1 row selected.
+
+SQL>
+```
+
+Now we know the name of the trace file we can enable tracing, execute the procedure and disable tracing.
+
+```plsql
+SQL> ALTER SESSION SET EVENTS '10046 trace name context forever, level 8';
+
+Session altered.
+
+SQL> SET SERVEROUTPUT ON
+SQL> EXEC populate_sql_trace_test(p_loops => 5);
+5 rows inserted.
+
+PL/SQL procedure successfully completed.
+
+SQL> ALTER SESSION SET EVENTS '10046 trace name context off';
+
+Session altered.
+
+SQL>
+```
+
+The contents of the file are listed below. The output looks a little confusing, but you can identify the individual statements and their associated waits and statistics.
+
+```plsql
+/u01/app/oracle/admin/DEV/udump/dev1_ora_367660.trc
+Oracle Database 10g Enterprise Edition Release 10.1.0.3.0 - Production
+With the Partitioning, Oracle Label Security, OLAP and Data Mining options
+ORACLE_HOME = /u01/app/oracle/product/10.1.0/db_1
+System name:	OSF1
+Node name:	dbserver.oracle-base.com
+Release:	V5.1
+Version:	2650
+Machine:	alpha
+Instance name: DEV1
+Redo thread mounted by this instance: 1
+Oracle process number: 16
+Unix process pid: 367660, image: oracleDEV1@dbserver.oracle-base.com
+
+*** 2005-04-05 09:46:51.499
+*** ACTION NAME:() 2005-04-05 09:46:51.499
+*** MODULE NAME:(SQL*Plus) 2005-04-05 09:46:51.499
+*** SERVICE NAME:(SYS$USERS) 2005-04-05 09:46:51.499
+*** SESSION ID:(130.26739) 2005-04-05 09:46:51.499
+=====================
+PARSING IN CURSOR #29 len=68 dep=0 uid=180 oct=42 lid=180 tim=11746409761792 hv=3847243385 ad='2bb57798'
+ALTER SESSION SET EVENTS '10046 trace name context forever, level 8'
+END OF STMT
+...
+```
+
+> 内容过长，略
+
+下面的命令使用  `tkprof` 工具翻译 trace 文件, 将翻译输出到 *translated.txt* 文件. 其中`explain`和 `table`参数设置为允许显示执行计划, 而 `sys` 参数阻止显示递归的SQL            .
+
+```shell
+$ cd /u01/app/oracle/admin/DEV/udump/
+$ tkprof dev1_ora_367660.trc translated.txt explain=test/test table=sys.plan_table sys=no waits=yes
+
+TKPROF: Release 10.1.0.3.0 - Production on Tue Apr 5 09:22:43 2005
+
+Copyright (c) 1982, 2004, Oracle.  All rights reserved.
+
+
+```
+
+内容将翻译成以下的格式 `less translate.txt`
+
+```plsql
+TKPROF: Release 10.1.0.3.0 - Production on Tue Apr 5 09:53:50 2005
+
+Copyright (c) 1982, 2004, Oracle.  All rights reserved.
+
+Trace file: dev1_ora_367660.trc
+Sort options: default
+
+********************************************************************************
+count    = number of times OCI procedure was executed
+cpu      = cpu time in seconds executing 
+elapsed  = elapsed time in seconds executing
+disk     = number of physical reads of buffers from disk
+query    = number of buffers gotten for consistent read
+current  = number of buffers gotten in current mode (usually for update)
+rows     = number of rows processed by the fetch or execute call
+********************************************************************************
+
+ALTER SESSION SET EVENTS '10046 trace name context forever, level 8'
+
+
+call     count       cpu    elapsed       disk      query    current        rows
+------- ------  -------- ---------- ---------- ---------- ----------  ----------
+Parse        0      0.00       0.00          0          0          0           0
+Execute      1      0.00       0.00          0          0          0           0
+Fetch        0      0.00       0.00          0          0          0           0
+------- ------  -------- ---------- ---------- ---------- ----------  ----------
+total        1      0.00       0.00          0          0          0           0
+
+Misses in library cache during parse: 0
+Optimizer mode: ALL_ROWS
+Parsing user id: 180  (TEST)
+
+Elapsed times include waiting on following events:
+  Event waited on                             Times   Max. Wait  Total Waited
+  ----------------------------------------   Waited  ----------  ------------
+  SQL*Net message to client                       1        0.00          0.00
+  SQL*Net message from client                     1        7.35          7.35
+********************************************************************************
+
+BEGIN DBMS_OUTPUT.ENABLE(2000); END;
+
+...
+```
+
+> 内容过长，略
+
+会话中每一个执行的语句,文件中都包含一条记录着解析、执行和获取的统计信息, 何处需要执行计划和等待会话的列表。
+
+
+
+### 查询 trace 文件内容
+
+这里有几种方法可以为开发者使用 trace 文件, 这里有一种简单的方法可以让他们通过 SQL*Plus 查询其中的内容并缓存到他们自己的电脑文件中。
+
+下面的例子创建一个账户锁定状态的用户和用于读取指定文件的代码。这段代码让其公开并且创建一个字典对象指向的 trace 存放的位置。
+
+```plsql
+CONN / AS SYSDBA
+
+-- Create locked user to hold code.
+CREATE USER trace_user IDENTIFIED BY trace_user ACCOUNT LOCK;
+
+-- Create a type and pipelined table function to read the specified trace file.
+CREATE TYPE trace_user.t_trace_tab AS TABLE OF VARCHAR2(32767);
+/
+
+CREATE OR REPLACE FUNCTION trace_user.get_trace_file (p_trace_file IN VARCHAR2)
+  RETURN trace_user.t_trace_tab PIPELINED
+AS
+  l_file UTL_FILE.file_type; 
+  l_text VARCHAR2(32767);
+BEGIN
+  l_file := UTL_FILE.fopen('TRACE_DIR', p_trace_file, 'r', 32767);
+  BEGIN
+    LOOP
+      UTL_FILE.get_line(l_file, l_text);
+      PIPE ROW (l_text);
+    END LOOP;
+  EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+      NULL;
+  END;
+  UTL_FILE.fclose(l_file);
+  RETURN;
+EXCEPTION
+  WHEN OTHERS THEN
+    PIPE ROW ('ERROR: ' || SQLERRM);
+    IF UTL_FILE.is_open(l_file) THEN
+      UTL_FILE.fclose(l_file);
+    END IF;
+    RETURN;
+END;
+/
+
+-- Make the code accessible to PUBLIC.
+GRANT EXECUTE ON trace_user.t_trace_tab TO PUBLIC;
+GRANT EXECUTE ON trace_user.get_trace_file TO PUBLIC;
+CREATE PUBLIC SYNONYM get_trace_file FOR trace_user.get_trace_file;
+
+-- Create a directory object to the trace location.
+CREATE OR REPLACE DIRECTORY trace_dir AS '/u01/app/oracle/diag/rdbms/testing/testing/trace/';
+GRANT READ ON DIRECTORY trace_dir TO trace_user;
+```
+
+通过刚才的设置，接着我们可以看到开发者如何创建和返回 tracee 文件到他们自己的本地计算机。
+
+1. 首先赋予执行`dbms_monitor`脚本的权限给测试用户
+
+```plsql
+-- Make sure the user has access to DBMS_MONITOR.
+CONN / AS SYSDBA
+GRANT EXECUTE ON dbms_monitor TO hr;
+```
+
+2. 使用测试账户登录，首先查询当前使用的 trace 文件，为以后调用之前写个读取 trace 文件的函数做前提准备。
+
+```plsql
+CONN hr/hr
+
+-- Identify the current trace file.
+SELECT value
+FROM   v$diag_info
+WHERE  name = 'Default Trace File';
+
+VALUE
+--------------------------------------------------------------------------------
+/u01/app/oracle/diag/rdbms/db11g/DB11G/trace/DB11G_ora_6309.trc
+```
+
+3. 接着开始会话级的 trace，并且执行几个测试查询。最后将会话级的trace 关闭。
+
+```plsql
+SQL>
+
+-- Turn on tracing.
+EXEC DBMS_MONITOR.session_trace_enable(waits=>TRUE, binds=>FALSE);
+
+-- Do something you wish to trace.
+SET LINESIZE 100
+COLUMN employee_name FORMAT A30
+COLUMN department_name FORMAT A20
+COLUMN manager_name FORMAT A30
+
+SELECT e.first_name || ' '  || e.last_name AS employee_name,
+       d.department_name,
+       e2.first_name || ' ' || e2.last_name AS manager_name
+FROM   employees e
+       JOIN departments d ON e.department_id = d.department_id
+       JOIN employees e2 ON e.manager_id = e2.employee_id
+WHERE  d.department_name = 'Finance'
+ORDER BY d.department_name;
+
+EMPLOYEE_NAME                  DEPARTMENT_NAME      MANAGER_NAME
+------------------------------ -------------------- ------------------------------
+Nancy Greenberg                Finance              Neena Kochhar
+Luis Popp                      Finance              Nancy Greenberg
+Jose Manuel Urman              Finance              Nancy Greenberg
+Ismael Sciarra                 Finance              Nancy Greenberg
+John Chen                      Finance              Nancy Greenberg
+Daniel Faviet                  Finance              Nancy Greenberg
+
+6 rows selected.
+
+SQL> 
+
+-- Turn off tracing.
+EXEC DBMS_MONITOR.session_trace_disable;
+```
+
+4. 最后使用系统缓存信息到文件中。
+
+
+```plsql
+-- Spool the contents of the relevant trace file to a local file.
+SET PAGESIZE 0 FEEDBACK OFF TRIMSPOOL ON TAB OFF
+SPOOL e:\tracefile.trc
+
+SELECT *
+FROM   TABLE(get_trace_file('DB11G_ora_6309.trc'));
+
+SPOOL OFF
+SET PAGESIZE 14 FEEDBACK ON
+```
+
+如今开发者可以在本地安装`TKPROF`或者通过`SQL Developer`来翻译 trace 文件。
+
+只需把原始格式的 trace 文件拷贝到装有 `SQL developer`的主机上，拖拽或者文件打开的方式都有看到下面翻译过来的几种用于分析的格式。
+
+![树状结构显示](Oracle11g%E5%B8%B8%E7%94%A8%E7%AE%A1%E7%90%86%E6%9F%A5%E8%AF%A2.assets/image-20201124231927072.png)
+
+![统计分析视图](Oracle11g%E5%B8%B8%E7%94%A8%E7%AE%A1%E7%90%86%E6%9F%A5%E8%AF%A2.assets/image-20201124232038063.png)
+
+![image-20201124232154019](Oracle11g%E5%B8%B8%E7%94%A8%E7%AE%A1%E7%90%86%E6%9F%A5%E8%AF%A2.assets/image-20201124232154019.png)
 
 ------
 
