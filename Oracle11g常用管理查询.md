@@ -570,7 +570,32 @@ DDL语言中的类型同样可以使用在PL/SQL中，比如`VARCHAR2`,`NUMBER`,
 
 ### 变量
 
+```plsql
+declare
+	n_id number;
+	v_name varchar2(100);
+	d_birth_date date;
+	v_gender varchar2(30);
+begin
+	...
+end;
+```
 
+比如下面的一段用于测试压力的代码
+
+```plsql
+declare 
+   l_cnt number ;
+begin
+for i in 1 .. 100000
+  loop
+    execute immediate 'select count(*) from t where x = ' || i into l_cnt;
+  end loop;
+end;
+
+```
+
+> 通过 `select ... into`语句将查询结果设置给变量
 
 ------
 
@@ -1387,24 +1412,24 @@ O12C READ WRITE 27-SEP-14 319781
 
 * 常看控制文件名字和位置
 
-  + 方法一
+  1.方法一
 
 ```plsql
-    SQL> show parameter control_files;
+SQL> show parameter control_files;
 ```
 
-  + 方法二
+2. 方法二
 
 ```plsql
-    SQL> select name from v$controlfile;
+SQL> select name from v$controlfile;
 ```
 
-  + 方法三
+3. 方法三
 
-    查看spfile中的字符串信息（仅仅适用于Linux）
+查看spfile中的字符串信息（仅仅适用于Linux）
 
 ```shell
-    $ strings $ORACLE_HOME/dbs/spfileO12C.ora | grep -i control_files -A 5
+$ strings $ORACLE_HOME/dbs/spfileO12C.ora | grep -i control_files -A 5
 ```
 
 ​    
@@ -1415,7 +1440,7 @@ O12C READ WRITE 27-SEP-14 319781
 
   从 `v$log` 和 `v$logfile` 动态视图表中查询
 
-```pl
+```plsql
 COL group# FORM 99999
 COL thread# FORM 99999
 COL grp_status FORM a10
@@ -2254,6 +2279,149 @@ s.recid
 
 ------
 
+#### 删除 online redo log
+
+此种场景需要 media recovery, 如果没有备份，可以采用下面步骤
+
+1. 首先数据库无法处于 `open`, 但可以在`mount`模式下查询,
+
+```plsql
+SQL> select file#, status, fuzzy, error, checkpoint_change#,
+       to_char(checkpoint_time,'dd-mon-rrrr hh24:mi:ss') as checkpoint_time
+       from v$datafile_header;
+       
+     FILE# STATUS  FUZ
+---------- ------- ---
+ERROR
+-----------------------------------------------------------------
+CHECKPOINT_CHANGE# CHECKPOINT_TIME
+------------------ -----------------------------
+	 1 ONLINE  NO
+
+	    458378 05-oct-2020 17:56:21
+
+	 2 ONLINE  NO
+
+	    458378 05-oct-2020 17:56:21
+
+     FILE# STATUS  FUZ
+---------- ------- ---
+ERROR
+-----------------------------------------------------------------
+CHECKPOINT_CHANGE# CHECKPOINT_TIME
+------------------ -----------------------------
+
+	 3 ONLINE  NO
+
+	    458378 05-oct-2020 17:56:21
+
+	 4 ONLINE  NO
+
+
+     FILE# STATUS  FUZ
+---------- ------- ---
+ERROR
+-----------------------------------------------------------------
+CHECKPOINT_CHANGE# CHECKPOINT_TIME
+------------------ -----------------------------
+	    458378 05-oct-2020 17:56:21
+
+	 5 ONLINE  NO
+
+	    458378 05-oct-2020 17:56:21
+```
+
+ > 需要先还原数据库
+
+```plsql
+RMAN > conn target /
+RMAN > shutdown immediate;
+RMAN > startup nomount;
+RMAN > restore database;
+```
+
+
+2. 上面的操作可以得到 `checkpoint SCN`,接着实现不完整数据恢复
+
+```plsql
+   RMAN> recover database until sequence 458378;
+```
+
+   > 如果不能执行第一步骤（数据库不处于`open`模式）,也可以通过
+
+```plsql
+RMAN> list backup;
+List of Backup Sets
+===================
+
+BS Key  Type LV Size       Device Type Elapsed Time Completion Time
+------- ---- -- ---------- ----------- ------------ ---------------
+42      Incr 0  792.70M    DISK        00:01:06     05-OCT-20      
+BP Key: 42   Status: AVAILABLE  Compressed: NO  Tag: TAG20201005T175006
+Piece Name: E:\ORACLEXE\APP\ORACLE\FAST_RECOVERY_AREA\XE\BACKUPSET\2020_10_05\O1_MF_NNND0_TAG20201005T175006_HQOV2H73_.BKP
+List of Datafiles in backup set 42
+File LV Type Ckp SCN    Ckp Time  Name
+---- -- ---- ---------- --------- ----
+1    0  Incr 458110     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\SYSTEM.DBF
+2    0  Incr 458110     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\SYSAUX.DBF
+3    0  Incr 458110     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\UNDOTBS1.DBF
+4    0  Incr 458110     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\USERS.DBF
+5    0  Incr 458110     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\RECCAT01.DBF
+
+BS Key  Size       Device Type Elapsed Time Completion Time
+------- ---------- ----------- ------------ ---------------
+43      57.00K     DISK        00:00:01     05-OCT-20      
+BP Key: 43   Status: AVAILABLE  Compressed: NO  Tag: TAG20201005T175122
+Piece Name: E:\ORACLEXE\APP\ORACLE\FAST_RECOVERY_AREA\XE\BACKUPSET\2020_10_05\O1_MF_ANNNN_TAG20201005T175122_HQOV4V8H_.BKP
+
+List of Archived Logs in backup set 43
+Thrd Seq     Low SCN    Low Time  Next SCN   Next Time
+---- ------- ---------- --------- ---------- ---------
+1    2       458097     05-OCT-20 458180     05-OCT-20
+ 
+BS Key  Size       Device Type Elapsed Time Completion Time
+------- ---------- ----------- ------------ ---------------
+45      1.08M      DISK        00:00:00     05-OCT-20      
+BP Key: 45   Status: AVAILABLE  Compressed: NO  Tag: TAG20201005T175533
+Piece Name: E:\ORACLEXE\APP\ORACLE\FAST_RECOVERY_AREA\XE\BACKUPSET\2020_10_05\O1_MF_ANNNN_TAG20201005T175533_HQOVDPFF_.BKP
+
+List of Archived Logs in backup set 45
+Thrd Seq     Low SCN    Low Time  Next SCN   Next Time
+---- ------- ---------- --------- ---------- ---------
+1    1       454933     05-OCT-20 458097     05-OCT-20
+1    2       458097     05-OCT-20 458180     05-OCT-20
+1    3       458180     05-OCT-20 458351     05-OCT-20
+
+BS Key  Type LV Size       Device Type Elapsed Time Completion Time
+------- ---- -- ---------- ----------- ------------ ---------------
+46      Incr 1  752.00K    DISK        00:00:40     05-OCT-20      
+BP Key: 46   Status: AVAILABLE  Compressed: NO  Tag: TAG20201005T175535
+Piece Name: E:\ORACLEXE\APP\ORACLE\FAST_RECOVERY_AREA\XE\BACKUPSET\2020_10_05\O1_MF_NNND1_TAG20201005T175535_HQOVDRZ0_.BKP
+List of Datafiles in backup set 46
+File LV Type Ckp SCN    Ckp Time  Name
+---- -- ---- ---------- --------- ----
+1    1  Incr 458357     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\SYSTEM.DBF
+2    1  Incr 458357     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\SYSAUX.DBF
+3    1  Incr 458357     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\UNDOTBS1.DBF
+4    1  Incr 458357     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\USERS.DBF
+5    1  Incr 458357     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\RECCAT01.DBF
+
+...
+
+RMAN> recover database until sequence 458351;
+```
+   >
+   >查看某个备份的归档日志的 `SCN`
+
+3. 最后需要重置日志，让其重新产生缺失的 online redo log 文件
+
+```plsql
+   RMAN> alter database open resetlogs;
+```
+------
+
+
+
 #### RMAN-06149
 
 当你尝试在你自己的开发环境使用 `RMAN`备份时，出现 "RMAN-06149: cannot BACKUP DATABASE in NOARCHIVELOG mode"的错误信息.
@@ -2370,27 +2538,261 @@ RMAN> show controlfile autobackup;
 RMAN> configure controlfile autobackup on;
 ```
 
+------
+
+
+
 ## 数据恢复
 
 ### 数据恢复的类型
 
 * 数据还原 VS 数据恢复
-
 * 完整恢复 VS 部分恢复
-
 * 传统模式 VS 数据闪回
 * 物理恢复 VS 逻辑恢复
 
 ### 闪回技术
 
 1. 查询闪回
+
 2. 版本闪回
+
 3. 数据表闪回
+
 4. 误删闪回
+
 5. 数据归档闪回
+
 6. 数据库闪回
 
-* 查看 **checkpoint**, 决定哪些数据需要恢复
+   
+
+### DRA - Data Recovery Advisor
+物理恢复通常用`RMAN`. `RMAN`中具有两条强大的指令`RESTORE DATABASE`和`RECOVER DATABASE`。第一条命令从最后一次备份中恢复所有的数据文件，第二条命令使用`redo log`恢复备份之后数据库中数据发生的变化。但是对所有的数据来一个完全的恢复是耗时且没有必要的，又是甚至需要建数据块脱机到`mount`状态。而Oracle从12c引入了DRA功能，简化了管理工作。
+
+下面让我们演示一个使用DRA修复数据文件破损的例子，由DRA建议你恢复特定的数据块，这样就会大大提高了数据恢复的时间
+
+
+1.让我们反其道来做一个实验，第一步，我们先找到 `HR.exmployees` 表存放的数据段中的块的位置
+
+```plsql
+SQL> select block_id from dba_extents where segment_name='SALES' and owner = 'SH';
+
+  BLOCK_ID
+----------
+       200
+```
+
+2. 接着获得更多的扩充段的信息
+
+```plsql
+SQL> select extent_id, file_id , block_id, bytes, blocks from dba_extents
+     where segment_name = 'SALES' and owner= 'SH';
+
+ EXTENT_ID    FILE_ID   BLOCK_ID      BYTES     BLOCKS
+---------- ---------- ---------- ---------- ----------
+         0          5        200      65536          8
+```
+
+3.找到对应的数据文件，并且关闭数据库，搞破坏。
+
+```plsql
+SQL> column file_name format a80;
+SQL> set linesize 80;
+SQL> select file_name from dba_data_files where file_id=5;
+FILE_NAME
+--------------------------------------------------------------------------------
+/u01/app/oracle/oradata/testing/example01.dbf
+
+SQL> shutdown immediate;
+```
+
+4. 我们使用Linux disk dump 命令直接对数据文件特定的位置（seek）写入数据块，这样就破坏了原来的数据，==注意：conv=notrunc一定不要忘了==，否则会将`seek`后写入信息即刻关闭文件，造成文件被截断。
+
+```shell
+oracle@oracle11g:~$ sudo dd if=/dev/urandom of=/u01/app/oracle/oradata/testing/example01.dbf ibs=8192 obs=8192 seek=200 count=1 conv=notrunc
+[sudo] password for oracle:
+0+0 records in
+0+0 records out
+0 bytes copied, 0.00305605 s, 0.0 kB/s
+```
+
+5. 接着对 `SH.SALES`表做一个全表查询，这将涉及到此表所有的数据块。
+
+```plsql
+SQL> select * from sh.sales;
+
+...
+        26     100225 30-APR-98          9         33             1      149.99
+       116     100226 30-APR-98          9         33             1       11.99
+        35     100226 30-APR-98          9         33             1       49.99
+ORA-01578: ORACLE data block corrupted (file # 5, block # 8337)
+ORA-01110: data file 5: '/u01/app/oracle/oradata/testing/example01.dbf'
+
+
+
+79440 rows selected.
+
+SQL> select count(*) from sh.sales;
+
+  COUNT(*)
+----------
+    918843
+```
+> 从上面的例子可以看到数据访问到 79440 行时报错，而通过count(*)统计索引中的信息远远不止这些记录。
+
+
+6. （可选）可以通过 `oerr`对错误代码做详细的解释
+
+```shell
+oracle@oracle11g:~$ oerr ora 1578
+01578, 00000, "ORACLE data block corrupted (file # %s, block # %s)"
+// *Cause:  The data block indicated was corrupt. This was a physical
+//          corruption, also called a media corruption. The cause is unknown
+//          but is most likely external to the database. If ORA-26040 is also
+//          signaled, the corruption is due to NOLOGGING or UNRECOVERABLE
+//          operations.
+// *Action: The general method to repair a media corrupt block is to restore
+//          a backup and recover the backup. For databases in ARCHIVELOG
+//          mode, use block media recovery or media recovery. In some situations,
+//          you can also drop the segment and re-create it. For example, you can
+//          drop an index and re-create the index.
+```
+
+7. 首先使用`RMAN`连接到目的数据库，此处省略`VALIDATE DATABASE`对数据库验证的过程，此操作实质上是执行 `          SYS.DBMS_BACKUP_RESTORE.BACKUPVALIDATE#4        `存储过程循环的对数据文件的每个数据库检验。由于我们已经在之前查询`SH.SALES`表时报错了，数据库已经标记了问题所在，可以直接`LIST FAILURE`列出来。
+
+```plsql
+RMAN> connect target;
+
+connected to target database: TESTING (DBID=402000462)
+using target database control file instead of recovery catalog
+
+RMAN> list failure;
+
+Database Role: PRIMARY
+
+List of Database Failures
+=========================
+
+Failure ID Priority Status    Time Detected Summary
+---------- -------- --------- ------------- -------
+62         HIGH     OPEN      28-NOV-20     Datafile 5: '/u01/app/oracle/oradata/testing/example01.dbf' contains one or more corrupt blocks
+```
+
+8. 现在有`DAR`告知我们怎么修复问题所在。`ADVISE FAILURE`
+
+```plsql
+RMAN> advise failure;
+
+Database Role: PRIMARY
+
+List of Database Failures
+=========================
+
+Failure ID Priority Status    Time Detected Summary
+---------- -------- --------- ------------- -------
+62         HIGH     OPEN      28-NOV-20     Datafile 5: '/u01/app/oracle/oradata/testing/example01.dbf' contains one or more corrupt blocks
+
+
+analyzing automatic repair options; this may take some time
+allocated channel: ORA_DISK_1
+channel ORA_DISK_1: SID=39 device type=DISK
+analyzing automatic repair options complete
+
+Mandatory Manual Actions
+========================
+no manual actions available
+
+Optional Manual Actions
+=======================
+no manual actions available
+
+Automated Repair Options
+========================
+Option Repair Description
+------ ------------------
+1      Restore and recover datafile 5
+  Strategy: The repair includes complete media recovery with no data loss
+  Repair script: /u01/app/oracle/diag/rdbms/testing/testing/hm/reco_2362913816.hm
+```
+
+9. （可选）让我们模拟看看修复的步骤所使用的脚本
+
+```plsql
+RMAN> repair failure preview;
+
+Strategy: The repair includes complete media recovery with no data loss
+Repair script: /u01/app/oracle/diag/rdbms/testing/testing/hm/reco_2362913816.hm
+
+contents of repair script:
+   # restore and recover datafile
+   sql 'alter database datafile 5 offline';
+   restore ( datafile 5 );
+   recover datafile 5;
+   sql 'alter database datafile 5 online';
+```
+
+10. 最后，可以真正的开始修复数据的工作了,`REPAIR FAILURE`
+
+```plsql
+RMAN> repair failure;
+
+Strategy: The repair includes complete media recovery with no data loss
+Repair script: /u01/app/oracle/diag/rdbms/testing/testing/hm/reco_2362913816.hm
+
+contents of repair script:
+   # restore and recover datafile
+   sql 'alter database datafile 5 offline';
+   restore ( datafile 5 );
+   recover datafile 5;
+   sql 'alter database datafile 5 online';
+
+Do you really want to execute the above repair (enter YES or NO)? YES
+executing repair script
+
+sql statement: alter database datafile 5 offline
+
+
+repair failure complete
+
+Starting restore at 28-NOV-20
+using channel ORA_DISK_1
+
+channel ORA_DISK_1: starting datafile backup set restore
+channel ORA_DISK_1: specifying datafile(s) to restore from backup set
+channel ORA_DISK_1: restoring datafile 00005 to /u01/app/oracle/oradata/testing/example01.dbf
+channel ORA_DISK_1: reading from backup piece /u01/app/oracle/recovery_area/TESTING/backupset/2020_11_16/o1_mf_nnndf_TAG20201116T095804_hv3q5dsd_.bkp
+channel ORA_DISK_1: piece handle=/u01/app/oracle/recovery_area/TESTING/backupset/2020_11_16/o1_mf_nnndf_TAG20201116T095804_hv3q5dsd_.bkp tag=TAG20201116T095804
+channel ORA_DISK_1: restored backup piece 1
+channel ORA_DISK_1: restore complete, elapsed time: 00:03:35
+Finished restore at 28-NOV-20
+
+Starting recover at 28-NOV-20
+using channel ORA_DISK_1
+
+starting media recovery
+
+archived log for thread 1 with sequence 15 is already on disk as file /u01/app/oracle/recovery_area/TESTING/archivelog/2020_11_21/o1_mf_1_15_hvjwo00f_.arc
+archived log for thread 1 with sequence 16 is already on disk as file /u01/app/oracle/recovery_area/TESTING/archivelog/2020_11_21/o1_mf_1_16_hvjwqn23_.arc
+...
+archived log for thread 1 with sequence 1 is already on disk as file /u01/app/oracle/recovery_area/TESTING/archivelog/2020_11_28/o1_mf_1_1_hw2yp62y_.arc
+archived log for thread 1 with sequence 2 is already on disk as file /u01/app/oracle/recovery_area/TESTING/archivelog/2020_11_28/o1_mf_1_2_hw30d7lx_.arc
+archived log file name=/u01/app/oracle/recovery_area/TESTING/archivelog/2020_11_21/o1_mf_1_15_hvjwo00f_.arc thread=1 sequence=15
+archived log file name=/u01/app/oracle/recovery_area/TESTING/archivelog/2020_11_21/o1_mf_1_16_hvjwqn23_.arc thread=1 sequence=16
+...
+archived log file name=/u01/app/oracle/recovery_area/TESTING/archivelog/2020_11_25/o1_mf_1_38_hvw9mhjo_.arc thread=1 sequence=38
+archived log file name=/u01/app/oracle/recovery_area/TESTING/archivelog/2020_11_25/o1_mf_1_39_hvw9mhjt_.arc thread=1 sequence=39
+media recovery complete, elapsed time: 00:00:31
+Finished recover at 28-NOV-20
+
+sql statement: alter database datafile 5 online
+```
+
+------
+
+
+
+#### 查看 **checkpoint**, 决定哪些数据需要恢复
 
 ```plsql
 SET LINES 132
@@ -2429,6 +2831,41 @@ SQL> select file#, status, error, recover from v$datafile_header;
 
 ### Flash Back
 
+`Flashback`利用的是存储在 `undo segments`中的信息重构之前的数据。 存储在撤销段的信息局限于设置的空间大小和`UNDO_RETENTION`配置。默认 900 秒 (15 分钟)你可以调整为一个合理的值。
+
+
+
+### Flashback 查询
+
+看看一个简单的例子，首先让我们修改数据并提交：
+
+```plsql
+SQL> UPDATE employees SET salary = salary + 1000 WHERE employee_id = 101;
+
+SQL> SELECT salary FROM employees WHERE employee_id = 101;
+
+SQL> COMMIT;
+```
+
+接下来，让我们查看一个小时前的数据如何？
+
+```plsql
+SQL> SELECT salary FROM employees AS OF TIMESTAMP sysdate - 1/24 WHERE employee_id = 101;
+```
+
+确定数据时候，使用更新以及子查询语句修改回来
+
+```plsql
+SQL> UPDATE employees SET salary = ( 
+    SELECT salary 
+    FROM employees AS OF TIMESTAMP sysdate - 1/24 	  WHERE employee_id = 101 )
+WHERE employee_id = 101;
+```
+
+
+
+首先确保设置和启用了 `FlashBack`, 我们可以通过对系统参数配置后，将数据库置入`mount`模式后，然后对数据库开启`flashback`,再将数据库开启。
+
 ```plsql
 SQL> select log_mode from v$database;
 
@@ -2445,11 +2882,30 @@ SQL> alter database flashback on;
 SQL> alter database open;
 ```
 
+查看 flashback此时已经开启
+
 ```plsql
 SQL> select flashback_on from v$database;
+
+FLASHBACK_ON
+------------------
+YES
 ```
 
-![image-20200903120046495](./Oracle11g常用管理查询.assets/image-20200903120046495.png)
+查看flashback日志信息
+
+```plsql
+SQL> select retention_target, flashback_size, oldest_flashback_time
+  2  from v$flashback_database_log;
+
+RETENTION_TARGET FLASHBACK_SIZE OLDEST_FL
+---------------- -------------- ---------
+            1440      104857600 25-NOV-20
+```
+
+
+
+![oldest](./Oracle11g常用管理查询.assets/image-20200903120046495.png)
 
 ```plsql
 SQL> select * from v$sgastat where name = 'flashback generation buff';
@@ -2458,7 +2914,72 @@ POOL NAME BYTES
 shared pool flashback generation buff 3981204
 ```
 
+在确定了`flashback`开启的前提下，我们就可以使用各种闪回的技术了，下面让我们一一做个范例演示
+
+
+
+### Flashback 版本
+
+如果一行数据被修改了N次，使用`VERSION BETWEEN`语句可以用来搜索这一行在撤销段中先前的多个版本。`VERSION_STARTTIME`和`VERSION_XID`都为**伪列**，其用来告知我们何时创建的一个事务处理和每个版本。而确实这两个信息的值代表着此内容早于`Flashback`保持窗口时间(`UNDO_RETENTION`的配置，默认900s)。
+
+让我们对数据多次修改，并提交所做修改。接着使用`VERSION BETWEEN TIMESTAMP`语句列出所有的版本
+
+```plsql
+SQL> update hr.employees set salary = 19999 where employee_id = 101;
+1 row updated.
+
+SQL> commit;
+Commit complete.
+
+SQL> update hr.employees set salary = 9999 where employee_id = 101;
+1 row updated.
+
+SQL> commit;
+Commit complete.
+
+SQL> select versions_starttime,versions_xid, salary
+  2  from hr.employees versions between timestamp sysdate - 1/24 * 1/4 and sysdate
+  3  where employee_id = 101;
+
+VERSIONS_STARTTIME               VERSIONS_XID         SALARY
+-------------------------------- ---------------- ----------
+25-NOV-20 06.34.05 PM            0700060034080000       9999
+25-NOV-20 06.33.59 PM            040012000D080000      19999
+25-NOV-20 06.33.47 PM            020020002F090000      29999
+                                                       17000
+```
+
+确认了你想闪回的时间段之后，下一步就是通过`update`子查询修改到特定时间的原始数据
+
+```plsql
+update hr.employees set salary = (
+    select salary from hr.employees versions between timestamp sysdate - 1/24 * 1/4 and sysdate
+    where employee_id = 101 and versions_xid = '040012000D080000'
+) where employee_id = 101;
+
+commit;
+```
+
+这样的操作就将数据 xid 为 *040012000D080000* 的版本的数据，将数据恢复到`19999`的值。
+
+> 注意： 基于sysdate - 1/24 \* 1/4 代表15分钟之前
+
+而采用`to_timestamp`函数就直接使用时间装换
+
+```plsql
+SQL> select salary, versions_xid, versions_starttime
+	from hr.employees versions between timestamp 
+	to_timestamp('2020-11-25 19:00:00','yyyy-mm-dd hh24:mi:ss')
+	and 
+	to_timestamp('2020-11-25 19:15:00', 'yyyy-mm-dd hh24:mi:ss')
+	where employee_id = 101;
+```
+
+
+
 ### 使用PL/SQL FlashBack  Database
+
+闪回到某个时间戳对应的数据库的状态。首先要脱机，不能让用户对数据库做访问。接着讲数据库置入`mount`状态，然后使用`flashback database`命令指定闪回到特定的时间。
 
 ```plsql
 SQL> shutdown abort;
@@ -2478,6 +2999,11 @@ SQL> startup mount;
 SQL> alter database open resetlogs;
 ```
 
+> 如果遇到`ERROR at line 1:
+> ORA-38729: Not enough flashback database log data to do FLASHBACK.` 报错，是因为你指定的时间超出flashback 数据库的日志开启记录的时间，数据库没有闪回的日志数据。
+
+
+
 ### 使用 RMAN FlashBack Database
 
 ```plsql
@@ -2486,6 +3012,8 @@ to_date('20-12-08 10:00:00','yy-mm-dd hh24:mi:ss');
 RMAN> flashback database to scn=2728665;
 RMAN> flashback database to sequence=2123 thread=1;
 ```
+
+
 
 ### 使用 Database Control FlashBack Database
 
@@ -2501,6 +3029,8 @@ SQL> select count(*) from test;
 
 ![image-20200903124723234](./Oracle11g常用管理查询.assets/image-20200903124723234.png)
 
+
+
 ### Flaskback DROP
 
 ![image-20200903125713679](./Oracle11g常用管理查询.assets/image-20200903125713679.png)
@@ -2514,34 +3044,34 @@ SQL> select count(*) from test;
 2. 建立一个测试账户
 
 ```plsql
-   SQL> create user dropper identified by dropper;
-   SQL> grant create session, resource to dropper;
-   SQL> commit;
-   SQL> connect dropper/dropper;
+SQL> create user dropper identified by dropper;
+SQL> grant create session, resource to dropper;
+SQL> commit;
+SQL> connect dropper/dropper;
 ```
 
 3. 建表，建索引，插入数据
 
 ```plsql
-   SQL> create table names (name varchar2(10));
-   SQL> create index name_idx on names(name);
-   SQL> alter table names add (constraint name_u unique(name));
-   SQL> insert into names values ('John');
-   SQL> commit;
+SQL> create table names (name varchar2(10));
+SQL> create index name_idx on names(name);
+SQL> alter table names add (constraint name_u unique(name));
+SQL> insert into names values ('John');
+SQL> commit;
 ```
 
 4. 查看下你创建的对象
 
 ```plsql
-   SQL> select object_name,object_type from user_objects;
-   SQL> select constraint_name,constraint_type,table_name from
+SQL> select object_name,object_type from user_objects;
+SQL> select constraint_name,constraint_type,table_name from
    user_constraints;
 ```
 
 5. 模拟删除表
 
 ```plsql
-   SQL> drop table names;
+SQL> drop table names;
 ```
 
 6. 再重新查询下，执行第4步，此时对象已经从 user_objects中移除
@@ -2549,7 +3079,7 @@ SQL> select count(*) from test;
 7. 查询 user_recyclebin 表，查找对应的名字
 
 ```plsql
-   SQL> select object_name,original_name,type from user_recyclebin;
+SQL> select object_name,original_name,type from user_recyclebin;
 ```
 
 8. 下图显示
@@ -2561,7 +3091,7 @@ SQL> select count(*) from test;
 9. 恢复表
 
 ```plsql
-   SQL> flashback table names to before drop;
+SQL> flashback table names to before drop;
 ```
 
    > 表已恢复，但索引和约束没有
@@ -2571,8 +3101,8 @@ SQL> select count(*) from test;
 11. 重命名索引和约束名称
 
 ```plsql
-    SQL> alter index "BIN$YXigM3puQNTgQAB/AQBmSQ==$0" rename to name_idx;
-    SQL> alter table names rename constraint
+SQL> alter index "BIN$YXigM3puQNTgQAB/AQBmSQ==$0" rename to name_idx;
+SQL> alter table names rename constraint
     "BIN$YXigM3ptQNTgQAB/AQBmSQ==$0" to name_u;
 ```
 
@@ -2581,8 +3111,8 @@ SQL> select count(*) from test;
 13. 再次使用 SYSTEM 连接，并且删除用户
 
 ```plsql
-    SQL> connect system/oracle;
-    SQL> drop user dropper cascade;
+SQL> connect system/oracle;
+SQL> drop user dropper cascade;
 ```
 
 14. 这次所有属于测试账户的对象全部消失
@@ -3067,152 +3597,9 @@ SQL>
 
 
 
-
-
 ------
 
 
-
-#### 删除 online redo log
-
-此种场景需要 media recovery, 如果没有备份，可以采用下面步骤
-
-1. 首先数据库无法处于 `open`, 但可以在`mount`模式下查询,
-
-```plsql
-SQL> select file#, status, fuzzy, error, checkpoint_change#,
-       to_char(checkpoint_time,'dd-mon-rrrr hh24:mi:ss') as checkpoint_time
-       from v$datafile_header;
-       
-     FILE# STATUS  FUZ
----------- ------- ---
-ERROR
------------------------------------------------------------------
-CHECKPOINT_CHANGE# CHECKPOINT_TIME
------------------- -----------------------------
-	 1 ONLINE  NO
-
-	    458378 05-oct-2020 17:56:21
-
-	 2 ONLINE  NO
-
-	    458378 05-oct-2020 17:56:21
-
-     FILE# STATUS  FUZ
----------- ------- ---
-ERROR
------------------------------------------------------------------
-CHECKPOINT_CHANGE# CHECKPOINT_TIME
------------------- -----------------------------
-
-	 3 ONLINE  NO
-
-	    458378 05-oct-2020 17:56:21
-
-	 4 ONLINE  NO
-
-
-     FILE# STATUS  FUZ
----------- ------- ---
-ERROR
------------------------------------------------------------------
-CHECKPOINT_CHANGE# CHECKPOINT_TIME
------------------- -----------------------------
-	    458378 05-oct-2020 17:56:21
-
-	 5 ONLINE  NO
-
-	    458378 05-oct-2020 17:56:21
-```
-
- > 需要先还原数据库
-
-```plsql
-RMAN > conn target /
-RMAN > shutdown immediate;
-RMAN > startup nomount;
-RMAN > restore database;
-```
-
-
-2. 上面的操作可以得到 `checkpoint SCN`,接着实现不完整数据恢复
-
-```plsql
-   RMAN> recover database until sequence 458378;
-```
-
-   > 如果不能执行第一步骤（数据库不处于`open`模式）,也可以通过
-
-```plsql
-RMAN> list backup;
-List of Backup Sets
-===================
-
-BS Key  Type LV Size       Device Type Elapsed Time Completion Time
-------- ---- -- ---------- ----------- ------------ ---------------
-42      Incr 0  792.70M    DISK        00:01:06     05-OCT-20      
-BP Key: 42   Status: AVAILABLE  Compressed: NO  Tag: TAG20201005T175006
-Piece Name: E:\ORACLEXE\APP\ORACLE\FAST_RECOVERY_AREA\XE\BACKUPSET\2020_10_05\O1_MF_NNND0_TAG20201005T175006_HQOV2H73_.BKP
-List of Datafiles in backup set 42
-File LV Type Ckp SCN    Ckp Time  Name
----- -- ---- ---------- --------- ----
-1    0  Incr 458110     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\SYSTEM.DBF
-2    0  Incr 458110     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\SYSAUX.DBF
-3    0  Incr 458110     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\UNDOTBS1.DBF
-4    0  Incr 458110     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\USERS.DBF
-5    0  Incr 458110     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\RECCAT01.DBF
-
-BS Key  Size       Device Type Elapsed Time Completion Time
-------- ---------- ----------- ------------ ---------------
-43      57.00K     DISK        00:00:01     05-OCT-20      
-BP Key: 43   Status: AVAILABLE  Compressed: NO  Tag: TAG20201005T175122
-Piece Name: E:\ORACLEXE\APP\ORACLE\FAST_RECOVERY_AREA\XE\BACKUPSET\2020_10_05\O1_MF_ANNNN_TAG20201005T175122_HQOV4V8H_.BKP
-
-List of Archived Logs in backup set 43
-Thrd Seq     Low SCN    Low Time  Next SCN   Next Time
----- ------- ---------- --------- ---------- ---------
-1    2       458097     05-OCT-20 458180     05-OCT-20
- 
-BS Key  Size       Device Type Elapsed Time Completion Time
-------- ---------- ----------- ------------ ---------------
-45      1.08M      DISK        00:00:00     05-OCT-20      
-BP Key: 45   Status: AVAILABLE  Compressed: NO  Tag: TAG20201005T175533
-Piece Name: E:\ORACLEXE\APP\ORACLE\FAST_RECOVERY_AREA\XE\BACKUPSET\2020_10_05\O1_MF_ANNNN_TAG20201005T175533_HQOVDPFF_.BKP
-
-List of Archived Logs in backup set 45
-Thrd Seq     Low SCN    Low Time  Next SCN   Next Time
----- ------- ---------- --------- ---------- ---------
-1    1       454933     05-OCT-20 458097     05-OCT-20
-1    2       458097     05-OCT-20 458180     05-OCT-20
-1    3       458180     05-OCT-20 458351     05-OCT-20
-
-BS Key  Type LV Size       Device Type Elapsed Time Completion Time
-------- ---- -- ---------- ----------- ------------ ---------------
-46      Incr 1  752.00K    DISK        00:00:40     05-OCT-20      
-BP Key: 46   Status: AVAILABLE  Compressed: NO  Tag: TAG20201005T175535
-Piece Name: E:\ORACLEXE\APP\ORACLE\FAST_RECOVERY_AREA\XE\BACKUPSET\2020_10_05\O1_MF_NNND1_TAG20201005T175535_HQOVDRZ0_.BKP
-List of Datafiles in backup set 46
-File LV Type Ckp SCN    Ckp Time  Name
----- -- ---- ---------- --------- ----
-1    1  Incr 458357     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\SYSTEM.DBF
-2    1  Incr 458357     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\SYSAUX.DBF
-3    1  Incr 458357     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\UNDOTBS1.DBF
-4    1  Incr 458357     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\USERS.DBF
-5    1  Incr 458357     05-OCT-20 E:\ORACLEXE\APP\ORACLE\ORADATA\XE\RECCAT01.DBF
-
-...
-
-RMAN> recover database until sequence 458351;
-```
-   >
-   > 查看某个备份的归档日志的 `SCN`
-
-3. 最后需要重置日志，让其重新产生缺失的 online redo log 文件
-
-```plsql
-   RMAN> alter database open resetlogs;
-```
-------
 
 ### 附录
 
@@ -4181,24 +4568,24 @@ runstats是由Thomas Kyte开发的脚本，该脚本能对做同一件事的两�
 1. 首先建一个测试账户，并授权
 
 ```plsql
-   SQL> create user test identified by test account unlock;
-   SQL> grant create session,create view,create table,  create procedure to test;
+SQL> create user test identified by test account unlock;
+SQL> grant create session,create view,create table,  create procedure to test;
    
-   SQL> grant select on sys.v_$statname to test;
+SQL> grant select on sys.v_$statname to test;
    
-   Grant succeeded.
+Grant succeeded.
    
-   SQL> grant select on sys.v_$mystat to test;
+SQL> grant select on sys.v_$mystat to test;
    
-   Grant succeeded.
+Grant succeeded.
    
-   SQL> grant select on sys.v_$timer to test;
+SQL> grant select on sys.v_$timer to test;
    
-   Grant succeeded.
+Grant succeeded.
    
-   SQL> grant select on sys.v_$latch to test;
+SQL> grant select on sys.v_$latch to test;
    
-   Grant succeeded.
+Grant succeeded.
 ```
 > 注意，当一个普通用户需要使用 `v$`视图时，需要指定 `sys.v$` 的名称空间，否则出现
 > `ORA-00942: table or view does not exist` 报错
@@ -4206,9 +4593,9 @@ runstats是由Thomas Kyte开发的脚本，该脚本能对做同一件事的两�
 2. 然后创建视图
 
 ```plsql
-   SQL> conn test/test
-   Connected.
-   SQL> create or replace view stats
+SQL> conn test/test
+Connected.
+SQL> create or replace view stats
       as select 'STAT...' || a.name name,b.value
       from v$statname a, v$mystat b
       where a.statistic# = b.statistic#
@@ -4224,13 +4611,13 @@ runstats是由Thomas Kyte开发的脚本，该脚本能对做同一件事的两�
 3. 创建一个临时表用于存放统计的结果
 
 ```plsql
-   SQL> create global temporary table run_stats
+SQL> create global temporary table run_stats
       ( runid varchar2(15),
       name varchar2(80),
       value int)
       on commit preserve rows;
    
-   Table created.
+Table created.
 ```
 
 4. 接着就是程序包的定义
@@ -4240,7 +4627,7 @@ runstats是由Thomas Kyte开发的脚本，该脚本能对做同一件事的两�
    * 完成时调用`rs_stop`，并打印报告
 
 ```plsql
-   SQL> create or replace package runstats_pkg
+SQL> create or replace package runstats_pkg
      as
         procedure rs_start;
         procedure rs_middle;
@@ -4248,15 +4635,15 @@ runstats是由Thomas Kyte开发的脚本，该脚本能对做同一件事的两�
      end;
      /
    
-   Package created.
+Package created.
 ```
 
 5. 接下来就是关键部分包中的各个存储过程了
 
 ```plsql
-   [oracle@std ~]$ vi body_runstats_pkg.sql
+[oracle@std ~]$ vi body_runstats_pkg.sql
    
-   create or replace package  body runstats_pkg
+create or replace package  body runstats_pkg
    as
        g_start number;
        g_run1 number;
@@ -5282,7 +5669,7 @@ END OF STMT
 
 > 内容过长，略
 
-下面的命令使用  `tkprof` 工具翻译 trace 文件, 将翻译输出到 *translated.txt* 文件. 其中`explain`和 `table`参数设置为允许显示执行计划, 而 `sys` 参数阻止显示递归的SQL            .
+下面的命令使用  `tkprof` 工具翻译 trace 文件, 将翻译输出到 *translated.txt* 文件. 其中`explain`和 `table`参数设置为允许显示执行计划, 而 `sys` 参数阻止显示`sys`用户执行的SQL            .
 
 ```shell
 $ cd /u01/app/oracle/admin/DEV/udump/
