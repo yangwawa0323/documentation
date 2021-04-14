@@ -1,5 +1,272 @@
 # Webpack 与 NodeJS
 
+
+
+## NodeJS入门
+
+NodeJS是一种建立在 Chrome V8引擎的Javascript运行环境。它使用事件驱动，非阻塞模式让其轻量化和高效。NodeJS还支持巨量的开源的包通过 npm 命令管理。
+
+除此外，它还具有以下优点：
+
+* 可以运行在客户端和服务器平台
+* 读取，删除以及更新文件
+* 非常简单就可以和数据库通信交互
+
+它为什么如此普及？
+
+* 它使用 Javascript 作为编程语言
+* 非常快（v8引擎和非阻塞式代码）
+* 总多的开源扩展库
+* 可以建立实时的服务比如聊天室
+
+
+
+### 安装NodeJS
+
+NodeJS 支持常见各种操作系统平台，因此你需要下载对应版本的 NodeJS，[详细下载请浏览官方网站](https://nodejs.org/en/download/) ，这里就不做Windows 开发环境软件安装过程演示了。
+
+安装之后请检查一下 nodeJS 是否能够正常工作
+
+首先检查一下 nodeJS 版本
+
+```shell
+C:\Users\yangwawa
+λ node -v
+v12.18.3
+```
+
+接着编写一个最为简单的 Javascript 脚本 **app.js**
+
+```javascript
+console.log('Hello world!')
+```
+
+然后直接使用 node 命令附加 app.js
+
+```shell
+$ node app
+Hello world!
+```
+
+
+
+### chrome V8 引擎
+
+计算机并不懂 Javascript，Javascript 引擎负责将人工编写的代码转成机器码
+
+* nodeJS 本身是由 C++ 语言开发的
+* 其核心就是 V8引擎
+* V8 引擎负责转换代码成机器码，更多请浏览[google V8介绍](https://developers.google.com/v8/)
+
+![screenshot-www-bilibili-com-video-BV154411K7Wi-1618389071156](Webpack_NodeJS.assets/screenshot-www-bilibili-com-video-BV154411K7Wi-1618389071156.png)\\
+
+
+
+### 全局对象
+
+详情请查看[官方文档](https://nodejs.org/api/globals.html)
+
+* __dirname 本程序所处的目录
+* __filename 本程序的文件名
+* console 控制台调试
+* exports 导出
+* module  模块的定义
+* require()  引用模块
+* setInterval(callback, delay,[, ...args])  周而复始定时器
+* setTimeout(callback, delay,[, ...args]) 一次性定时器
+
+范例 app.js
+
+```javascript
+let time = 0;
+
+let time = 0;
+
+var timer = setInterval(function () {
+  time += 2
+  if (time > 10) clearInterval(timer)
+  console.log(time + ' seconds has passed. ')
+} , 2000)
+```
+
+
+
+### 函数表达式
+
+常见函数编写都有关键字 function 加上函数名附带传递的参数，比如
+
+```javascript
+function sayHi() {
+  console.log('Hi!')
+}
+
+sayHi()
+```
+
+这是最简单的函数形态，javascript 还支持其他的函数无法格式，比如匿名函数
+
+```javascript
+var sayBye = function () {
+  console.log('Bye!')
+}
+
+sayBye()
+```
+
+
+
+### 模块和引用模块
+
+复杂的代码可以将Javascript 程序写成一个一个的文件也称呼为模块。其他程序可以调用它，也称呼为引用。
+
+首先范例中 count.js 内容如下
+
+```javascript
+var counter = function(arr){
+    return 'There are ' + arr.length + ' elements in the array.' 
+}
+
+```
+
+如何让我们编写 app.js 引用了？我们可以通过 require() 函数来实现
+
+```javascript
+require('./count');
+
+console.log(counter(['shaun', 'ken', 'ryu']))
+```
+
+> 注意：默认引用的为 javascript 脚本，因而不需要附带后缀。
+
+但我们运行代码时,却出现 ReferenceError 报错，counter 没有定义
+
+```shell
+E:\ProjectResources\webpack\nodejs-demo>node app
+E:\ProjectResources\webpack\nodejs-demo\app.js:30
+console.log(counter(['ken', 'yang', 'ryu']));
+        ^
+
+ReferenceError: counter is not defined
+    at Object.<anonymous> (E:\ProjectResources\webpack\nodejs-demo\app.js:30:9)
+    at Module._compile (internal/modules/cjs/loader.js:1137:30)
+    at Object.Module._extensions..js (internal/modules/cjs/loader.js:1157:10)
+    at Module.load (internal/modules/cjs/loader.js:985:32)
+    at Function.Module._load (internal/modules/cjs/loader.js:878:14)
+    at Function.executeUserEntryPoint [as runMain] (internal/modules/run_main.js:71:12)
+    at internal/main/run_main_module.js:17:47
+```
+
+原因在于，nodeJS模块的编写不仅仅是功能函数，还需要模块语法，也就是你需要使用 **module.exports** 将函数或者变量曝露出来，这样其他程序才可以调用，如果没有导出的函数或变量都认定**为私有**。
+
+让我们将 count.js 修正下
+
+```javascript
+var counter = function(arr){
+    return 'There are ' + arr.length + ' elements in the array.' 
+}
+
+module.exports = counter
+```
+
+既然导出的时候我们赋予的是单个`counter`函数, 那么引用此模块程序也只能得到单个函数。我们再将 app.js 修改下
+
+```javascript
+var counter = require('./count');
+
+console.log(counter(['ken', 'yang', 'ryu']));
+```
+
+如果模块中有着**多个函数或者变量**都要导出怎么处理了？
+
+下面我们编写一个 stuff.js 的模块实现：
+
+```javascript
+var counter = function (arr) {
+  return 'There are ' + arr.length + ' elements in the array.'
+}
+
+var adder = function (a, b) {
+  return `The sum of the 2 numbers is ${ a + b}.`
+}
+
+var pi = 3.14;
+
+module.exports.counter = counter
+module.exports.adder = adder
+module.exports.pi = pi
+```
+
+由上面的代码，我们将 **module.exports** 对象进行扩展，第11,12,13行显示。
+
+同样也可以写成在函数或变量定义时就决定是否导出,
+
+```javascript
+module.exports.counter = function (arr) {
+  return 'There are ' + arr.length + ' elements in the array.'
+}
+
+module.exports.adder = function (a, b) {
+  return `The sum of the 2 numbers is ${ a + b}.`
+}
+
+module.exports.pi = 3.14;
+```
+
+> 注意：不推荐以上的这种方法，因为函数不能在模块中的其他函数互相调用。
+
+
+
+由于此时导出的 **module.exports** 不是单个函数，而是**一整个对象**，我们在调用的代码中也要修改
+
+```javascript
+var stuff = require('./stuff');
+
+console.log(stuff.counter(['ken', 'yang', 'ryu']));
+
+console.log(stuff.adder(10, 99));
+```
+
+> 注意：对比之前的调用代码，我们将整个模块导入后得到的可以看待成一个包（库、模块），打开包取对应的函数。因而在函数前添加了从哪个包（库、模块）名。
+
+在模块导出对应函数和变量时，另外一种写法
+
+```javascript
+module.exports = {
+    counter : counter,
+    adder: adder,
+    pi: pi,
+}
+```
+
+为了代码的简化，ES2015语法中，对象中属性和变量的名字一致时可以偷懒做一个简写
+
+```javascript
+module.exports = {
+    counter,
+    adder,
+    pi,
+}
+```
+
+同时 ES2015 也提供给我们一个对象中提取工具，当我们导入模块时，不需要所有的函数，可以用大括号提值表达式：
+
+```javascript
+// var stuff = require('./stuff');
+var {  counter } = require('./stuff');
+// console.log(stuff.counter(['ken', 'yang', 'ryu']));
+
+console.log(counter(['ken', 'yang', 'ryu']));
+// console.log(stuff.adder(10, 99));
+```
+
+> 注意：**{ *counter* }** 只从引用的模块中取我们所需要的一个 ***counter*** 函数。弱水三千只取一瓢。
+
+
+
+-------
+
+## Webpack 使用指南
+
 为什么前端项目要使用webpack ？
 
 如下图， 
@@ -9,13 +276,15 @@
 * 可以配合其他预处理加载器，比如 **SCSS-loader**，一起使用。可以实验样式加载
 * **JSX** 以及 **ES2015** 语法，将你编写的 javascript 代码转码成浏览器更容易理解的 **vanilla JS**
 
+
+
 ![screenshot-webpack-docschina-org-1618197402525 (1)](Webpack_NodeJS.assets/screenshot-webpack-docschina-org-1618197402525%20(1).png)
 
 
 
 
 
-## 起步
+### 起步
 
 下面是一个模板，我们可以实现 Javascript 的打包
 
@@ -50,7 +319,7 @@ webpack 用于编译 JavaScript 模块。一旦完成 [安装](https://webpack.d
 
 
 
-## 基本安装
+### 基本安装
 
 首先我们创建一个目录，初始化 npm，然后 [在本地安装 webpack](https://webpack.docschina.org/guides/installation#local-installation)，接着安装 [`webpack-cli`](https://github.com/webpack/webpack-cli)（此工具用于在命令行中运行 webpack）：
 
@@ -117,7 +386,7 @@ npm install webpack webpack-cli --save-dev
 
 
 
-## 创建一个 bundle 
+### 创建一个 bundle
 
 首先，我们稍微调整下目录结构，创建分发代码(`./dist`)文件夹用于存放分发代码，源代码(`./src`)文件夹仍存放源代码。源代码是指用于书写和编辑的代码。分发代码是指在构建过程中，经过最小化和优化后产生的输出结果，最终将在浏览器中加载。调整后目录结构如下：
 
@@ -272,7 +541,7 @@ webpack 5.25.0 compiled successfully in 4334 ms
 
 
 
-## 模块 
+### 模块
 
 [ES2015](https://babeljs.io/learn-es2015/) 中的 [`import`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/import) 和 [`export`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export) 语句已经被标准化。虽然大多数浏览器还无法支持它们，但是 webpack 却能够提供开箱即用般的支持。
 
@@ -319,7 +588,7 @@ module: {
 
 
 
-## 使用 CSS-loader
+### 使用 CSS-loader
 
 使用 CSS-loader 可以加载我们的应用程序中仅仅需要用到的样式，另外可以模块化管理CSS样式
 
@@ -330,7 +599,7 @@ module: {
 
 
 
-### 安装 CSS loader
+#### 安装 CSS loader
 
 如果在使用 css-loader 之前，我们编写的网页内容
 
@@ -402,7 +671,7 @@ module:{
 
 
 
-## SASS loader
+### SASS loader
 
 SASS一种近乎编程式的CSS样式。由于其复用性高，快速成为了前端设计人员必备技能之一。
 
@@ -451,7 +720,7 @@ moudle: {
 
 
 
-## npm scripts
+### npm scripts
 
 考虑到用 CLI 这种方式来运行本地的 webpack 副本并不是特别方便，我们可以设置一个快捷方式。调整 *package.json* 文件，添加一个 [npm script](https://docs.npmjs.com/misc/scripts)：
 
@@ -504,7 +773,7 @@ webpack 5.4.0 compiled successfully in 1940 ms
 
 
 
-## 结论
+### 结论
 
 现在，你已经有了一个基础构建配置，你甚至可以将 HTML 页面也做loader 处理，请参考[官方 webpack 下的各种 loader](https://webpack.js.org/loaders/)。 这篇webpack涉及的为基础知识，如果想深入了解更多的 webpack功能移至下一章节 [`资源管理`](https://webpack.docschina.org/guides/asset-management) 指南，以了解如何通过 webpack 来管理资源，例如 images、fonts。此刻你的项目看起来应该如下：
 
@@ -534,7 +803,7 @@ webpack-demo
 
 
 
-## 附录
+### 附录
 
 在使用 webpack.config.js 中有一些额外的配置属性值，对调试代码有着辅助作用，特此推荐给大家
 
