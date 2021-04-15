@@ -263,6 +263,128 @@ console.log(counter(['ken', 'yang', 'ryu']));
 
 
 
+### 事件模块
+
+首先引入**events**模块
+
+```javascript
+var events = requrie('events');
+```
+
+接着新建一个 EventEmitter 对象
+
+```javascript
+var myEmiter = new events.EventEmitter();
+```
+
+这样就可以定义 on 事件,以及如何处理事件的回调函数，回调函数同样可以接受参数
+
+```javascript
+myEmiiter.on('someEvent',function(mssg){
+    console.log(mssg);
+})
+```
+
+> 注意：事件的名字不拘一格
+
+最后是如何触发事件了
+
+```javascript
+myEmitter.emit('someEvent'，'some message pass to callback function of event.')
+```
+
+全部代码如下：
+
+```javascript
+var events = require('events');
+var myEmitter = new events.EventEmitter()
+
+myEmitter.on('someEvent', function (mssg) {
+  console.log('received the message:')
+  console.log(mssg)
+});
+
+setTimeout(function () {
+  myEmitter.emit('someEvent', 'some message pass to callback function of event.')
+},3000);
+```
+
+
+
+#### 自定义对象实现事件处理
+
+很多情况下我们需要自定义对象同样具有着事件。这可以通过 **util** 包来实现，它提供了对象继承的功能函数。
+
+下面的范例我们定义了一个人的类函数，让其具有着 **speak** 事件
+
+```javascript
+var Person = function(name){
+    this.name = name
+}
+```
+
+首先还是引入 所需要的包
+
+```javascript
+var util = require('util');
+
+```
+
+接着就是定义继承关系, **inherits** 的第一个参数是我们定义的对象最为子类，第二个参数就是具有事件处理的 **EventEmitter** 最为父类
+
+```javascript
+util.inherits(Person,events.EventEmitter);
+```
+
+最后让我们来看看一段完整实现的代码：
+
+```javascript
+var events = require('events');
+var myEmitter = new events.EventEmitter()
+
+myEmitter.on('someEvent', function (mssg) {
+  console.log('received the message:')
+  console.log(mssg)
+});
+
+setTimeout(function () {
+  myEmitter.emit('someEvent', 'some message pass to callback function of event.')
+}, 3000)
+
+
+var Person = function (name) {
+  this.name = name
+}
+
+var util = require('util');
+
+util.inherits(Person, events.EventEmitter);
+
+var james = new Person('James');
+var mary = new Person('Mary');
+var ryu = new Person('Ryu');
+
+var people = [james, mary, ryu]
+people.forEach(function (person) {
+  person.on('speak', function (mssg) {
+    console.log(person.name + ' said: ' + mssg)
+  })
+})
+
+james.emit('speak', 'Hey! Mary! I am James')
+mary.emit('speak', 'Nice to meet you! I am Mary')
+```
+
+> 注意: 上面的程序运行时，会先出现 James 和 Mary 打招呼的信息，三秒之后才出现定时器的信息，这是因为 nodeJS 代码运行是无阻塞的
+
+
+
+到此为止，我们介绍给大家简单的 NodeJS 应用，由于它的商用开源模块数千万计，篇幅原因，大家可以慢慢摸索。 
+
+
+
+
+
 -------
 
 ## Webpack 使用指南
